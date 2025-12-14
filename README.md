@@ -18,6 +18,11 @@ Example basic usage
 API
 ---
 
-The API is a basic HTTPS API returning data in JSON format. For more details see [here](API.md)
+The original API is a basic HTTPS API returning data in JSON format. For more details see [here](API_2021.md)
 
 Disclaimer: I have no connection with EPH Controls so cannot guarentee that these API calls will always be valid.
+
+Test
+----
+
+A test program has been added to test interaction via https and also now mqtt (test.py). The program has some documentation [here](test.md)
