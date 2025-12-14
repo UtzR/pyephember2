@@ -1,1513 +1,430 @@
-# API
+# EPH Controls Ember / Topband API Specification
 
-Note: I have no connection with EPHControls and this API may be subject to change. Use of this API is at your own risk.
+**Version:** 2.0 (Updated December 2025)
 
-## API versions
+> **Note:** I have no connection with EPH Controls and this API may be subject to change. Use of this API is at your own risk. This is a reverse-engineered specification based on observation.
 
-The ember API was updated in January 2021 and users are slowly being moved to the new API. The document describing the old API from 2020 is available from [here](AIP_2020.md)
+## API Versions
 
-## Intro
+The Ember API was updated in January 2021. The document describing the old API from 2020 is available in [API_2020.md](API_2020.md).
 
-The ember API is a dual HTTPs and MQTT endpoint. 
+## Overview
 
-HTTP with JSON is used for authentication, admin, and getting zone information. 
+The Ember API is a dual HTTPS and MQTT system:
 
-MQTT with JSON is used for reading and updating some zone information (e.g. target temperature)
+| Transport | Purpose |
+|-----------|---------|
+| **HTTP (REST/JSON)** | Authentication, admin, reading zone/home information |
+| **MQTT (JSON + Binary)** | Real-time control and state updates |
 
-## URLS
+**Key Insight:** HTTP is authoritative for commands; MQTT is reactive for state propagation. pyephember2 works without MQTT because MQTT is not required for control—only for passive updates.
+
+## Endpoints
 
 ### HTTP
 
-The base HTTP URL is https://eu-https.topband-cloud.com/ember-back. This will be referred to as $HTTP_ENDPOINT for the rest of the document. 
+Base URL: `https://eu-https.topband-cloud.com/ember-back`
+
+Referred to as `$HTTP_ENDPOINT` in this document.
 
 ### MQTT
 
-The MQTT URL used is eu-base-mqtt.topband-cloud.com:18883 and uses TLS to encrypt the traffic. This will be referred to as $MQTT_ENDPOINT for the rest of the document.
+Broker: `eu-base-mqtt.topband-cloud.com:18883` (TLS encrypted)
 
+Referred to as `$MQTT_ENDPOINT` in this document.
 
-# HTTP API Calls
+---
 
-## Login
+# HTTP API
 
-Initial login uses the email and password you used to register with the system. Subsequent requests are then authenticated using an access token that is returned during the initial login.
+## Authentication
 
-You can use any valid user for this but it would be a good idea to not use the super user for your home and have a dedicated API user
+### Login
 
-### Request
+Initial login uses email and password. Subsequent requests use the access token.
 
-To login for the first time send a POST to $HTTP_ENDPOINT/appLogin/login with a JSON request containing your username and password.
-
-```
-POST /ember-back/appLogin/login HTTP/2.0
-Accept	application/json
-Content-Type	application/json;charset=utf-8
-```
-
-The form data to POST is
+#### Request
 
 ```
+POST $HTTP_ENDPOINT/appLogin/login
+Content-Type: application/json
+Accept: application/json
+```
+
+```json
 {
-	"password": "password",
-	"model": "iPhone XS",
-	"os": "13.5",
-	"type": 2,
-	"appVersion": "2.0.4",
-	"userName": "user@email.com"
+    "password": "password",
+    "model": "iPhone XS",
+    "os": "13.5",
+    "type": 2,
+    "appVersion": "2.0.4",
+    "userName": "user@email.com"
 }
 ```
 
-### Response
+#### Response
 
-The response is JSON in the format
-
-```
-{
-	"data": {
-		"refresh_token": "long_refresh_token",
-		"token": "long_token"
-	},
-	"message": null,
-	"status": 0,
-	"timestamp": 1615150233365
-}
-```
-
-The `token` is required for subsequent requests so it is important to keep this, this should be sent in the Authorization header for all other requests. 
-
-The `refresh_token` can be used to update the authorization token and should be kept if you are planning on having longer sessions.
-
-## Refresh Auth Token
-
-To refresh your access token, send a GET to `$HTTP_ENDPOINT/appLogin/refreshAccessToken` using the `refresh_token` from your login request in the Authorization header 
-
-It is unclear how long an access token last for however, it looks to last at least 1 hour. 
-
-```
-GET /ember-back/appLogin/refreshAccessToken HTTP/2.0
-Accept	application/json
-Authorization	long_refresh_token
-```
-
-### Response
-
-The response contains the new authorization and refresh tokens.
-
-```
-{
-	"data": {
-		"refresh_token": "new_long_refresh_token",
-		"token": "new_long_token"
-	},
-	"message": null,
-	"status": 0,
-	"timestamp": 1572718395062
-}
-```
-
-## Report Token
-
-The report token message is sent after login. It is unknown that this message does but I don't believe it is required for general usage of the API.
-
-### Request
-
-The request is a POST to `$HTTP_ENDPOING/user/reportToken` 
-
-```
-GET /ember-back/user/reportToken HTTP/2.0
-Authorization	long_token
-Accept	application/json
-```
-
-With the following JSON
-
-```
-{
-	"os": "ios",
-	"phoneToken": "really_long_phone_token",
-	"type": 1,
-	"appVersion": "2.0.4"
-}
-```
-
-### Response
-
-The response is the following JSON.
-
-```
-{
-	"data": null,
-	"message": null,
-	"status": 0,
-	"timestamp": 1615150233469
-}
-```
-
-
-## Select User
-
-After login the select user call is made to get user information for the app. 
-
-
-To make a call to select user send a GET request to `$HTTP_ENDPOING/user/selectUser` with the token in the Authourization header. 
-
-### Request
-
-```
-GET /ember-back/user/selectUser HTTP/2.0
-Authorization	long_token
-Accept	application/json
-```
-
-### Response
-
-The response is a JSON message that includes information about the user.
-
-
-```
-
-{
-	"data": {
-		"accessfailedcount": 0,
-		"appVersion": "2.0.4",
-		"areacode": null,
-		"email": "user@email.com",
-		"emailconfirmed": true,
-		"firstname": "Me",
-		"id": 1111,
-		"ip": null,
-		"lastname": "Me",
-		"lockoutenabled": true,
-		"lockoutenddateutc": null,
-		"model": "iPhone XS",
-		"newsmarketing": false,
-		"os": "13.5",
-		"phonenumber": "0871234567",
-		"phonenumberconfirmed": false,
-		"primaryexternalloginprovider": null,
-		"profilepictureuri": null,
-		"profilepicurelastsynced": null,
-		"protocolstatus": 1,
-		"registrationtime": null,
-		"securitystamp": "f9e3098b-7b99-45a0-bc23-7f4b399edde6",
-		"synchroniseprofilepicture": false,
-		"systemmaintenance": false,
-		"twofactorenabled": false,
-		"type": 2,
-		"useprimaryexternalproviderpicture": false,
-		"username": "user@email.com"
-	},
-	"message": "The query is successful",
-	"status": 0,
-	"timestamp": 1615150233473
-}
-```
-
-## Get Available Homes
-
-To get the list of available homes 
-
-### Request
-
-The request is a GET to the URL `$ENDPOINT/homes/list`.
-
-```
-GET /ember-back/homes/list HTTP/2.0
-Authorization	long_token
-Accept	application/json
-Content-Length	0
-```
-
-### Response
-
-The response is a JSON Blob describing the homes available to your account.
-
-```
-{
-	"data": [{
-		"deviceType": 1,
-		"gatewayid": "gwid1234",
-		"invitecode": "ABCD",
-		"name": "Home",
-		"productId": null,
-		"uid": null,
-		"zoneCount": 2
-	}, {
-		"deviceType": 3,
-		"gatewayid": "gwid1111",
-		"invitecode": "DDDD",
-		"name": "Home",
-		"productId": "1234abcd",
-		"uid": "011011",
-		"zoneCount": 1
-	}],
-	"message": "succ.",
-	"status": 0,
-	"timestamp": 1615150233565
-}
-```
-
-The `gatewayid` is required for later requests to identify the home that is being controlled.
-
-
-## Get Home Details
-
-To get details of your home, you should use the `gatewayid` returned from the `homes/list` request above.
-
-### Request
-
-The request is a POST to the URL `$ENDPOINT/homes/detail` passing the `gatewayid` in a JSON request
-
-```
-GET /ember-back/homes/detail HTTP/2.0
-Authorization	long_token
-Accept	application/json
-```
-
-The JSON to send is:
-
-```
-{
-	"gateWayId": "gwid1111"
-}
-```
-
-### Response
-
-The response is JSON 
-
-```
-{
-	"data": {
-		"settings": {
-			"holidaymodescheduled": false,
-			"newuserhasjoinedhome": true,
-			"userhaslefthome": true,
-			"userid": 1111,
-			"zoneboostactivated": false,
-			"zonescheduleupdated": false
-		},
-		"curAccess": {
-			"areamanagement": true,
-			"boost": true,
-			"eventmanagement": true,
-			"holidays": true,
-			"homemanagement": false,
-			"homeuserid": "homeuserid980",
-			"roleId": 5,
-			"scenariomanagement": true,
-			"schedulesmanagement": true
-		},
-		"wifiVersion": 100116,
-		"homes": {
-			"deviceType": 3,
-			"frostprotectionenabled": null,
-			"gatewayid": "gwid1111",
-			"holidaymodeactive": null,
-			"invitecode": "59A64",
-			"name": "Home",
-			"pointDataList": [{
-				"createTime": "2021-01-29 14:01:55",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "id444",
-				"pointAttribute": null,
-				"pointIndex": 6,
-				"pointName": "FrostEnable",
-				"pointType": 1,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:55",
-				"value": "1"
-			}, {
-				"createTime": "2021-01-29 14:01:55",
-				"delFlag": 0,
-				"deviceId": "deviceid07",
-				"id": "pdlidc3ce",
-				"pointAttribute": null,
-				"pointIndex": 8,
-				"pointName": "FrostSetTemp",
-				"pointType": 1,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:55",
-				"value": "5"
-			}, {
-				"createTime": "2021-01-29 14:01:25",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlidf4a8",
-				"pointAttribute": null,
-				"pointIndex": 10,
-				"pointName": "HolidayEndTime",
-				"pointType": 5,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:25",
-				"value": "0"
-			}, {
-				"createTime": "2021-01-29 14:01:55",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlid209b",
-				"pointAttribute": null,
-				"pointIndex": 2,
-				"pointName": "WifiRssi",
-				"pointType": 1,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:55",
-				"value": "100"
-			}, {
-				"createTime": "2021-01-29 14:01:25",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlid6782a",
-				"pointAttribute": null,
-				"pointIndex": 4,
-				"pointName": "HolidayFlag",
-				"pointType": 1,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:25",
-				"value": "0"
-			}, {
-				"createTime": "2021-01-29 14:01:25",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlid2498",
-				"pointAttribute": null,
-				"pointIndex": 5,
-				"pointName": "HolidayCnt",
-				"pointType": 5,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:25",
-				"value": "0"
-			}, {
-				"createTime": "2021-01-29 14:01:25",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlid5aa6",
-				"pointAttribute": null,
-				"pointIndex": 9,
-				"pointName": "HolidayStartTime",
-				"pointType": 5,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:25",
-				"value": "0"
-			}, {
-				"createTime": "2021-01-29 14:01:55",
-				"delFlag": 0,
-				"deviceId": "deviceidc99999",
-				"id": "pdlidcbf8",
-				"pointAttribute": null,
-				"pointIndex": 7,
-				"pointName": "NoFrostStatus",
-				"pointType": 1,
-				"productId": "productid135",
-				"uid": "uid011",
-				"updateTime": "2021-01-29 14:01:55",
-				"value": "0"
-			}],
-			"productId": "productid135",
-			"quickboosttemperature": 20.00,
-			"sysTemType": "EMBER-PS",
-			"uid": "uid011",
-			"weatherlocation": null,
-			"zoneCount": 1
-		},
-		"mcuVersion": 0
-	},
-	"message": "succ.",
-	"status": 0,
-	"timestamp": 1615150236340
-}
-```
-
-### Notes
-
-This response contains information about the home and of particular for us is looking at the `pointDataList`. 
-
-Point Data is used as part of later JSON responses, and also as part of the MQTT requests and responses. The information from this requests can be used to help us find the index, type and initial value for a particular data list.
-
-
-## Get Zones Information
-
-To get details of your available zones, you should send the `gatewayid` to the `homesVT/zoneProgram` endpoint.
-
-### Request
-
-The request is a POST to the URL `$ENDPOINT/homesVT/zoneProgram` passing the `gatewayid` in a JSON request
-
-```
-GET /ember-back/homesVT/zoneProgram HTTP/2.0
-Authorization	long_token
-Accept	application/json
-```
-
-The JSON to send is:
-
-```
-{
-	"gateWayId": "gwid1111"
-}
-```
-
-### Response
-
-The response is JSON 
-
-```
-{
-	"data": [{
-		"deviceDays": [{
-			"dayType": 0,
-			"deviceId": "productid135",
-			"id": "devicedayiddb17",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 70,
-				"id": "programidb5c1",
-				"startTime": 70,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programid2b84d",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 170,
-				"id": "programid273ea",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 1,
-			"deviceId": "productid135",
-			"id": "devicedayid57efb",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 80,
-				"id": "programida7c41",
-				"startTime": 80,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programid8ea2e",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 213,
-				"id": "programid0b9a",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 2,
-			"deviceId": "productid135",
-			"id": "devicedayidb8b59",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 80,
-				"id": "programid9e9f0",
-				"startTime": 80,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programidb169c8",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 213,
-				"id": "programided6f",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 3,
-			"deviceId": "productid135",
-			"id": "devicedayidf99",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 80,
-				"id": "programid76158",
-				"startTime": 80,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programidbfb",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 213,
-				"id": "programid15319",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 4,
-			"deviceId": "productid135",
-			"id": "devicedayid446b",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 80,
-				"id": "programid4a789",
-				"startTime": 80,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programid468e2",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 213,
-				"id": "programidaa4e2",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 5,
-			"deviceId": "productid135",
-			"id": "devicedayid8341e",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 80,
-				"id": "programid44f5c",
-				"startTime": 80,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programidde00",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 213,
-				"id": "programid3754",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}, {
-			"dayType": 6,
-			"deviceId": "productid135",
-			"id": "devicedayid97c5e",
-			"p1": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 70,
-				"id": "programid840a5",
-				"startTime": 70,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p2": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 120,
-				"id": "programid7c333",
-				"startTime": 120,
-				"updateTime": "2021-03-07 20:45:07.000"
-			},
-			"p3": {
-				"createTime": "2021-01-29 14:01:54.000",
-				"delFlag": 0,
-				"endTime": 170,
-				"id": "programid911ee",
-				"startTime": 170,
-				"updateTime": "2021-03-07 20:45:07.000"
-			}
-		}],
-		"deviceType": 2,
-		"isonline": true,
-		"mac": "acacacac",
-		"name": "home",
-		"pointDataList": [{
-			"pointIndex": 11,
-			"value": "0"
-		}, {
-			"pointIndex": 3,
-			"value": "12"
-		}, {
-			"pointIndex": 4,
-			"value": "0"
-		}, {
-			"pointIndex": 13,
-			"value": "1"
-		}, {
-			"pointIndex": 10,
-			"value": "1"
-		}, {
-			"pointIndex": 14,
-			"value": "205"
-		}, {
-			"pointIndex": 8,
-			"value": "0"
-		}, {
-			"pointIndex": 7,
-			"value": "0"
-		}, {
-			"pointIndex": 5,
-			"value": "192"
-		}, {
-			"pointIndex": 9,
-			"value": "0"
-		}, {
-			"pointIndex": 6,
-			"value": "200"
-		}],
-		"productId": "productid135",
-		"systemType": "EMBER-PS",
-		"uid": "uid011",
-		"zoneid": "zoneid9b"
-	}],
-	"message": "succ.",
-	"status": 0,
-	"timestamp": 1615150236609
-}
-```
-
-### Notes
-
-This request is one of the brand new requests from the new API. It includes information from all zones including the zone
-
-  * Timer schedule. 
-  * Point data information
-
-The point data here contains the index and value type. The value type depends on the index. A full list of the index and value information will be provided later in the document. 
-
-## Get Zone Program
-
-To get details of your a single zones, you should send the `zoneid` to the `homesVT/zoneViewProgram` endpoint.
-
-### Request
-
-The request is a POST to the URL `$ENDPOINT/homesVT/zoneViewProgram` passing the `zoneid` in a JSON request
-
-```
-GET /ember-back/homesVT/zoneViewProgram HTTP/2.0
-Authorization	long_token
-Accept	application/json
-```
-
-The JSON to send is:
-
-```
-{
-	"zoneid": "zoneid9b"
-}
-```
-
-### Response
-
-The response is JSON 
-
-```
+```json
 {
     "data": {
-    	"deviceDays": [{
-            "dayType": 0,
-            "deviceId": "productid135",
-            "id": "devicedayiddb17",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 70,
-                "id": "programidb5c1",
-                "startTime": 70,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programid2b84d",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 170,
-                "id": "programid273ea",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 1,
-            "deviceId": "productid135",
-            "id": "devicedayid57efb",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 80,
-                "id": "programida7c41",
-                "startTime": 80,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programid8ea2e",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 213,
-                "id": "programid0b9a",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 2,
-            "deviceId": "productid135",
-            "id": "devicedayidb8b59",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 80,
-                "id": "programid9e9f0",
-                "startTime": 80,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programidb169c8",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 213,
-                "id": "programided6f",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 3,
-            "deviceId": "productid135",
-            "id": "devicedayidf99",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 80,
-                "id": "programid76158",
-                "startTime": 80,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programidbfb",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 213,
-                "id": "programid15319",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 4,
-            "deviceId": "productid135",
-            "id": "devicedayid446b",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 80,
-                "id": "programid4a789",
-                "startTime": 80,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programid468e2",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 213,
-                "id": "programidaa4e2",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 5,
-            "deviceId": "productid135",
-            "id": "devicedayid8341e",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 80,
-                "id": "programid44f5c",
-                "startTime": 80,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programidde00",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 213,
-                "id": "programid3754",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }, {
-            "dayType": 6,
-            "deviceId": "productid135",
-            "id": "devicedayid97c5e",
-            "p1": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 70,
-                "id": "programid840a5",
-                "startTime": 70,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p2": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 120,
-                "id": "programid7c333",
-                "startTime": 120,
-                "updateTime": "2021-03-07 20:45:07.000"
-            },
-            "p3": {
-                "createTime": "2021-01-29 14:01:54.000",
-                "delFlag": 0,
-                "endTime": 170,
-                "id": "programid911ee",
-                "startTime": 170,
-                "updateTime": "2021-03-07 20:45:07.000"
-            }
-        }],
+        "refresh_token": "long_refresh_token",
+        "token": "long_token"
+    },
+    "message": null,
+    "status": 0,
+    "timestamp": 1615150233365
+}
+```
+
+- `token` - Used in `Authorization` header for all subsequent requests
+- `refresh_token` - Used to refresh the token before expiry
+
+### Refresh Token
+
+```
+GET $HTTP_ENDPOINT/appLogin/refreshAccessToken
+Authorization: <refresh_token>
+Accept: application/json
+```
+
+Token validity appears to be at least 1 hour.
+
+## Home Information
+
+### List Homes
+
+```
+GET $HTTP_ENDPOINT/homes/list
+Authorization: <token>
+```
+
+#### Response
+
+```json
+{
+    "data": [{
+        "deviceType": 3,
+        "gatewayid": "gwid1111",
+        "invitecode": "DDDD",
+        "name": "Home",
+        "productId": "1234abcd",
+        "uid": "011011",
+        "zoneCount": 3
+    }],
+    "message": "succ.",
+    "status": 0
+}
+```
+
+### Home Details
+
+```
+POST $HTTP_ENDPOINT/homes/detail
+Authorization: <token>
+
+{"gateWayId": "gwid1111"}
+```
+
+Returns home configuration including `pointDataList` for home-level settings.
+
+## Zone Information
+
+### Get All Zones (Primary Method)
+
+```
+POST $HTTP_ENDPOINT/homesVT/zoneProgram
+Authorization: <token>
+
+{"gateWayId": "gwid1111"}
+```
+
+This is the primary endpoint for retrieving zone data. Response includes:
+
+- Zone metadata (name, mac, zoneid, deviceType, systemType)
+- Schedule data (deviceDays with p1/p2/p3 periods)
+- Point data (pointDataList with current state)
+
+#### Response Structure
+
+```json
+{
+    "data": [{
+        "deviceDays": [...],
         "deviceType": 2,
         "isonline": true,
-        "mac": "acacacac",
-        "name": "home",
-        "pointDataList": [{
-            "pointIndex": 11,
-            "value": "0"
-        }, {
-            "pointIndex": 3,
-            "value": "12"
-        }, {
-            "pointIndex": 4,
-            "value": "0"
-        }, {
-            "pointIndex": 13,
-            "value": "1"
-        }, {
-            "pointIndex": 10,
-            "value": "1"
-        }, {
-            "pointIndex": 14,
-            "value": "205"
-        }, {
-            "pointIndex": 8,
-            "value": "0"
-        }, {
-            "pointIndex": 7,
-            "value": "0"
-        }, {
-            "pointIndex": 5,
-            "value": "192"
-        }, {
-            "pointIndex": 9,
-            "value": "0"
-        }, {
-            "pointIndex": 6,
-            "value": "200"
-        }],
+        "mac": "10ba77692",
+        "name": "Downstairs",
+        "pointDataList": [
+            {"pointIndex": 5, "value": "204"},
+            {"pointIndex": 6, "value": "200"},
+            {"pointIndex": 7, "value": "0"},
+            ...
+        ],
         "productId": "productid135",
         "systemType": "EMBER-PS",
         "uid": "uid011",
         "zoneid": "zoneid9b"
+    }],
+    "timestamp": 1615150236609
+}
+```
+
+### Device Types
+
+| deviceType | Description |
+|------------|-------------|
+| 2 | Thermostat |
+| 4 | Hot Water Controller |
+| 514 | Hot Water Controller (alternate) |
+| 773 | Thermostatic Radiator Valve (TRV) |
+
+### System Types
+
+| systemType | Description |
+|------------|-------------|
+| EMBER-PS | Standard Ember system |
+
+---
+
+# MQTT API
+
+## Connection
+
+### Connect
+
+```
+Client ID: <userId>_<timestamp>
+Username: app/<token>
+Password: <token>
+```
+
+Where:
+- `userId` - From `selectUser` HTTP response
+- `token` - From login response
+- `timestamp` - Unix timestamp in milliseconds
+
+### Topics
+
+| Topic Pattern | Direction | Purpose |
+|---------------|-----------|---------|
+| `<productId>/<uid>/upload/pointdata` | Device → Cloud | State updates from device |
+| `<productId>/<uid>/download/pointdata` | Cloud → Device | Commands to device |
+
+## Message Format
+
+### Envelope (JSON)
+
+```json
+{
+    "common": {
+        "serial": 7870,
+        "productId": "productid135",
+        "uid": "uid011",
+        "timestamp": "1765731704839",
+        "userId": "1111"
     },
-    "message": "succ.",
-    "status": 0,
-    "timestamp": 1613335284263
+    "data": {
+        "mac": "10ba77692",
+        "pointData": "AAcBAw=="
+    }
 }
 ```
 
-### Notes
+- `mac` - Identifies the target zone
+- `pointData` - Base64-encoded binary attribute data
 
-The information here is the same as a single zone information from the previous zoneProgram information.
+---
 
-# MQTT API Calls
+# Point Data Specification
 
-## MQTT Basics
+## Binary Encoding
 
-MQTT is a pub/sub protocol for sending messages between a client and server.
-
-A client can subscribed to a topic that lets them receive messages about a topic.
-
-A client can also publish messages to a topic to inform other entities about a change.
-
-## Connect
-
-The first thing the client does after connecting is to send a `Connect Command` 
-
-### Request
-
+The `pointData` field contains Base64-encoded binary records:
 
 ```
-MQ Telemetry Transport Protocol, Connect Command
-    Header Flags: 0x10, Message Type: Connect Command
-    Msg Len: 102
-    Protocol Name Length: 4
-    Protocol Name: MQTT
-    Version: MQTT v3.1.1 (4)
-    Connect Flags: 0xca, User Name Flag, Password Flag, QoS Level: At least once delivery (Acknowledged deliver), Clean Session Flag
-        1... .... = User Name Flag: Set
-        .1.. .... = Password Flag: Set
-        ..0. .... = Will Retain: Not set
-        ...0 1... = QoS Level: At least once delivery (Acknowledged deliver) (1)
-        .... .0.. = Will Flag: Not set
-        .... ..1. = Clean Session Flag: Set
-        .... ...0 = (Reserved): Not set
-    Keep Alive: 60
-    Client ID Length: 18
-    Client ID: 1111_1613126074181
-    User Name Length: 36
-    User Name: app/really_long_refresh_token
-    Password Length: 32
-    Password: really_long_refresh_token
+[HEADER][INDEX][TYPE][VALUE...]
 ```
 
-The client ID is the `id` returned from `selectUser` request followed by token. `<id>_<other>`. The other part of the id appears to be a unix timestamp.
+| Field | Size | Description |
+|-------|------|-------------|
+| Header | 1 byte | Always `0x00` (may be part of extended index) |
+| Index | 1 byte | Point index (0-255) |
+| Type | 1 byte | Data type identifier |
+| Value | 1-4 bytes | Big-endian value |
 
-The User Name is the refresh token from the HTTP Login request with `app/` prefixed.
+Multiple records can be concatenated in a single payload.
 
-The Password is the same refresh token.
+## Data Types
 
-### Respoonse
+| Type ID | Length | Description | Example |
+|---------|--------|-------------|---------|
+| 1 | 1 byte | Integer/enum/boolean | Mode, boost flag |
+| 2 | 2 bytes | Temperature × 10 (read-only) | Current temp: 204 = 20.4°C |
+| 4 | 2 bytes | Temperature × 10 (read-write) | Target temp: 200 = 20.0°C |
+| 5 | 4 bytes | Unix timestamp (seconds) | Boost start time |
 
-The response is a `Connect Ack`
+**Temperature Scale:** All temperatures are stored as `degreesC × 10`
+- 19.5°C → 195
+- 50.0°C → 500 (hot water)
 
+## Zone Point Index Registry
+
+### Confirmed Indices
+
+| Index | Name | Type | Values | Status |
+|-------|------|------|--------|--------|
+| **5** | Current Temperature | 2 | temp × 10 | ✅ CONFIRMED |
+| **6** | Target Temperature | 4 | temp × 10 | ✅ CONFIRMED |
+| **7** | Zone Mode | 1 | 0=AUTO, 1=ALL_DAY, 2=ON, 3=OFF | ✅ CONFIRMED |
+| **8** | Boost Hours | 1 | 0=inactive, 1-3=duration | ✅ CONFIRMED |
+| **9** | Boost Start Time | 5 | Unix epoch (seconds) | ✅ CONFIRMED |
+| **10** | Boiler/Heating State | 1 | 1=OFF, 2=ON | ✅ CONFIRMED |
+| **14** | Boost Target Temperature | 4 | temp × 10 | ✅ CONFIRMED |
+
+### Observed Indices (Needs Validation)
+
+| Index | Name | Type | Notes |
+|-------|------|------|-------|
+| 3 | Zone mode (alt?) | 1 | Values 11, 12 observed |
+| 4 | Advance Active | 1 | 0/1 toggle |
+| 11 | Unknown flag | 1 | Often 0 |
+| 13 | Enabled/Present flag | 1 | Always 1 |
+| 15 | Schedule bitmap/counter | 5 | Changes with schedule |
+| 16 | Capability bitmap | 5 | Often constant |
+| 17 | Counter/telemetry | 5 | Often 0 |
+| 18 | Counter/telemetry | 5 | Often 0 |
+
+### Device-Specific Index Mapping
+
+Some indices vary by `deviceType`:
+
+| deviceType | MODE index | TARGET_TEMP index | Notes |
+|------------|------------|-------------------|-------|
+| 2 (Thermostat) | 7 | 6 | Standard |
+| 4 (Hot Water) | 7 | 6 | Standard |
+| 514 | 11 | 6 | Alternate mode index |
+| 773 (TRV) | 11 | 12 | Different indices |
+
+---
+
+# Command Patterns
+
+## Set Zone Mode (Turn Off)
+
+**MQTT Downlink:**
 ```
-MQ Telemetry Transport Protocol, Connect Ack
-    Header Flags: 0x20, Message Type: Connect Ack
-    Msg Len: 2
-    Acknowledge Flags: 0x00
-    Return Code: Connection Accepted (0)
-
-```
-
-## Subscriptions
-
-When starting the client subscribes to the following topics.
-
-### Point Data
-
-```
-MQ Telemetry Transport Protocol, Subscribe Request
-    Header Flags: 0x82, Message Type: Subscribe Request
-    Msg Len: 87
-    Message Identifier: 2
-    Topic Length: 82
-    Topic: productid135/uid011/upload/pointdata
-    Requested QoS: At most once delivery (Fire and Forget) (0)
-```
-
-The topic is made up of information from your home. This is the `productid` and `uid` from the `homes/detail` request in the HTTP API
-
-
-### Notification App
-
-```
-MQ Telemetry Transport Protocol, Subscribe Request
-    Header Flags: 0x82, Message Type: Subscribe Request
-    Msg Len: 65
-    Message Identifier: 3
-    Topic Length: 60
-    Topic: id7a55/1111/notificationApp/update
-    Requested QoS: At most once delivery (Fire and Forget) (0)
-
-```
-
-The notificaiton app topic includes an `<id>/<client id>/notificationApp/update`
-
- * `<id>` - TODO - figure out what this is
- * `<client id>` - client ID from selectUser request.
-
-
-### Device Remove 1
-
-
-```
-MQ Telemetry Transport Protocol, Subscribe Request
-    Header Flags: 0x82, Message Type: Subscribe Request
-    Msg Len: 56
-    Message Identifier: 5
-    Topic Length: 51
-    Topic: productid135/1111/device/remove
-    Requested QoS: At most once delivery (Fire and Forget) (0)
-
-```
-
-The notificaiton app topic includes an `<product id>/<client id>/device/remove`
-
- * `<product id>` - Product ID from the `homes/detail` response.
- * `<client id>` - client ID from selectUser request.
-
-### Device Remove 2
-
-
-```
-MQ Telemetry Transport Protocol, Subscribe Request
-    Header Flags: 0x82, Message Type: Subscribe Request
-    Msg Len: 56
-    Message Identifier: 6
-    Topic Length: 51
-    Topic: id27b5/1111/device/remove
-    Requested QoS: At most once delivery (Fire and Forget) (0)
-
+Index 7, Type 1, Value 3 (OFF)
 ```
 
-The notificaiton app topic includes an `<id>/<client id>/device/remove`
-
- * `<id>` - TODO - figure out what this is
- * `<client id>` - client ID from selectUser request.
-
-### Responses
-
-Each subscribe request has a `Subscribe Ack` response for the message identifier.
-
+**Observed Response:**
 ```
-MQ Telemetry Transport Protocol, Subscribe Ack
-    Header Flags: 0x90, Message Type: Subscribe Ack
-    Msg Len: 3
-    Message Identifier: 2
-    Granted QoS: At most once delivery (Fire and Forget) (0)
+i=7 value=3 (mode off)
+i=10 value=1 (heating output off)
 ```
 
-## Publish to Upload Point Data
+## Set Target Temperature
 
-The upload point data publish message sends a message with JSON data to the `upload/pointdata` topic. The topic name includes the `productid` and `uid` in the topic as `productid135/uid011/upload/pointdata`
-
-TODO - figure out when this is sent. Client -> server or server -> client
-
-### Request
-
-
+**MQTT Downlink:**
 ```
-MQ Telemetry Transport Protocol, Publish Message
-    Header Flags: 0x30, Message Type: Publish Message, QoS Level: At most once delivery (Fire and Forget)
-    Msg Len: 269
-    Topic Length: 82
-    Topic: productid135/uid011/upload/pointdata
-    Message: json_data
-
+Index 6, Type 4, Value <temp×10>
 ```
 
-The JSON data is as follows
+Example: 20.5°C → Value 205
+
+## Activate Boost
+
+**MQTT Downlink (multiple points):**
 ```
+i=8  t=1  v=<hours>           (1, 2, or 3)
+i=9  t=5  v=<epoch_seconds>   (boost start time)
+i=14 t=4  v=<temp×10>         (boost target temp)
+```
+
+## Cancel Boost
+
+**MQTT Downlink:**
+```
+i=8 t=1 v=0
+i=9 t=5 v=0
+```
+
+---
+
+# Schedule Encoding
+
+## Time Format
+
+Schedule times are encoded in **10-minute units since midnight**:
+
+```
+encoded_time = (hours × 60 + minutes) ÷ 10
+```
+
+| Time | Encoded |
+|------|---------|
+| 07:00 | 42 |
+| 08:30 | 51 |
+| 17:00 | 102 |
+| 23:50 | 143 |
+
+**UI Constraint:** Only 10-minute increments are selectable.
+
+## Period Structure
+
+Each day has 3 periods (p1, p2, p3):
+
+```json
 {
-  "common":{
-    "serial":7870,
-    "productId":"productid135",
-    "uid":"uid011",
-    "timestamp":1623115
-  },
-  "data":{
-    "mac":"acacacac",
-    "pointData":"AAYEAL4="
-  }
-}
-```
- * `serial` - TODO - figure out what this is
- * `productId` - as per the topic
- * `uid` - as per the topic
- * `mac` indicates the zone that this data is from and can be found in the `zoneProgram` or `zoneViewProgram` data.
- * `pointData` is base64 encoded binary data that indicates the point data information
-
-
-In this example the point data `AAYEAL4=` decodes to `00000000 00000110 00000100 00000000 10111110`. 
-
-If you break this up the first 2 bytes are the point index, the next one is the point type and the final bytes are the value.
-
-For this example we have:
-
- * index - 6
- * type - 4
- * value - 190
-
-If you look at this compared to the `zoneProgram`, we can see that the zone program `pointDataList` contains:
-
-```
-{
-    pointIndex": 6,
-    "value": "190"
+    "dayType": 1,
+    "p1": {"startTime": 42, "endTime": 51},
+    "p2": {"startTime": 102, "endTime": 130},
+    "p3": {"startTime": 170, "endTime": 180}
 }
 ```
 
-This matches up to the target temperature for the zone. 
+**Day Types:** 0=Sunday, 1=Monday, ... 6=Saturday
 
-More information on the Point Data list is available later in this document.  
+**Disabled Period:** When `startTime == endTime`, the period is disabled/empty.
 
-### Response
+---
 
-The upload point data is a fire and forget message and there is no ack message or response.
+# Implementation Notes
 
-## Publish to Download Point Data
+## pyephember2 Behavior
 
+- Uses HTTP for zone data retrieval
+- Uses MQTT for sending control commands
+- Does not require MQTT subscription for basic control
+- MQTT subscription enables real-time state updates
 
-The download point data publish message sends a message with JSON data to the `download/pointdata` topic. The topic name includes the `productid` and `uid` in the topic as `productid135/uid011/download/pointdata`
+## Error Handling
 
-TODO - figure out when this is sent. Client -> server or server -> client
+- HTTP timeout: 10 seconds default
+- API may be slow during peak times
+- Retry with exponential backoff recommended
 
+## Token Management
 
-### Request
+- Access token expires after ~30 minutes
+- Refresh before expiry using `refresh_token`
+- Re-login if refresh fails
 
-```
-MQ Telemetry Transport Protocol, Publish Message
-    Header Flags: 0x32, Message Type: Publish Message, QoS Level: At least once delivery (Acknowledged deliver)
-    Msg Len: 296
-    Topic Length: 84
-    Topic: productid135/uid011/download/pointdata
-    Message Identifier: 8
-    Message: json_data
+---
 
-```
+# Changelog
 
-```
-{
-  "data":{
-    "mac":"acacacac",
-    "pointData":"AAYEALk="
-  },
-  "common":{
-    "timestamp":1615749905466,
-    "serial":905466,
-    "productId":"productid135",
-    "uid":"uid011",
-    "userId":"1111"
-  }
-}
-```
+## Version 2.0 (December 2025)
 
- * `serial` - TODO - figure out what this is
- * `productId` - as per the topic
- * `uid` - as per the topic
- * `mac` indicates the zone that this data is from and can be found in the `zoneProgram` or `zoneViewProgram` data.
- * `pointData` is base64 encoded binary data that indicates the point data information
- * `userId` - The client id from the selectUser request
+- Added confirmed PointIndex semantics from reverse-engineering
+- Added MQTT command patterns for boost, mode, temperature
+- Added schedule encoding specification
+- Added device-type specific index mapping
+- Clarified temperature scaling (×10)
+- Added zone mode values (0=AUTO, 1=ALL_DAY, 2=ON, 3=OFF)
+- Added boiler state values (1=OFF, 2=ON)
 
-### Response
+## Version 1.0 (March 2021)
 
-The response is a `Publish Ack` message
-
-```
-MQ Telemetry Transport Protocol, Publish Ack
-    Header Flags: 0x40, Message Type: Publish Ack
-    Msg Len: 2
-    Message Identifier: 8
-```
-
-## Ping Request
-
-The client seems to regurarly send a ping request to the server as a keep alive.
-
-### Request
-
-```
-MQ Telemetry Transport Protocol, Ping Request
-    Header Flags: 0xc0, Message Type: Ping Request
-    Msg Len: 0
-```
-
-### Response
-
-```
-MQ Telemetry Transport Protocol, Ping Response
-    Header Flags: 0xd0, Message Type: Ping Response
-    Msg Len: 0
-```
-
-## Disconnect Request
-
-When closing the client sends a disconnect request
-
-### Request
-
-```
-MQ Telemetry Transport Protocol, Disconnect Req
-    Header Flags: 0xe0, Message Type: Disconnect Req
-    Msg Len: 0
-```
-
-
-# Point Data
-
-The point data information is the way to transmit data about parts of the system. Point data is used in a number of messages and seems to relate to two different types of elements:
-
- * Home Details
- * Zone Details
-
-## Homes Details
-
-```
-"pointDataList": [{
-		"createTime": "2021-01-29 14:01:55",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "id444",
-		"pointAttribute": null,
-		"pointIndex": 6,
-		"pointName": "FrostEnable",
-		"pointType": 1,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:55",
-		"value": "1"
-	}, {
-		"createTime": "2021-01-29 14:01:55",
-		"delFlag": 0,
-		"deviceId": "deviceid07",
-		"id": "pdlidc3ce",
-		"pointAttribute": null,
-		"pointIndex": 8,
-		"pointName": "FrostSetTemp",
-		"pointType": 1,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:55",
-		"value": "5"
-	}, {
-		"createTime": "2021-01-29 14:01:25",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlidf4a8",
-		"pointAttribute": null,
-		"pointIndex": 10,
-		"pointName": "HolidayEndTime",
-		"pointType": 5,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:25",
-		"value": "0"
-	}, {
-		"createTime": "2021-01-29 14:01:55",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlid209b",
-		"pointAttribute": null,
-		"pointIndex": 2,
-		"pointName": "WifiRssi",
-		"pointType": 1,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:55",
-		"value": "100"
-	}, {
-		"createTime": "2021-01-29 14:01:25",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlid6782a",
-		"pointAttribute": null,
-		"pointIndex": 4,
-		"pointName": "HolidayFlag",
-		"pointType": 1,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:25",
-		"value": "0"
-	}, {
-		"createTime": "2021-01-29 14:01:25",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlid2498",
-		"pointAttribute": null,
-		"pointIndex": 5,
-		"pointName": "HolidayCnt",
-		"pointType": 5,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:25",
-		"value": "0"
-	}, {
-		"createTime": "2021-01-29 14:01:25",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlid5aa6",
-		"pointAttribute": null,
-		"pointIndex": 9,
-		"pointName": "HolidayStartTime",
-		"pointType": 5,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:25",
-		"value": "0"
-	}, {
-		"createTime": "2021-01-29 14:01:55",
-		"delFlag": 0,
-		"deviceId": "deviceidc99999",
-		"id": "pdlidcbf8",
-		"pointAttribute": null,
-		"pointIndex": 7,
-		"pointName": "NoFrostStatus",
-		"pointType": 1,
-		"productId": "productid135",
-		"uid": "uid011",
-		"updateTime": "2021-01-29 14:01:55",
-		"value": "0"
-	}],
-```
-
-## Zone Data
-
-```
-
-"pointDataList": [{
-	"pointIndex": 11,
-	"value": "0"
-}, {
-	"pointIndex": 3,
-	"value": "12"
-}, {
-	"pointIndex": 4,
-	"value": "0"
-}, {
-	"pointIndex": 13,
-	"value": "1"
-}, {
-	"pointIndex": 10,
-	"value": "1"
-}, {
-	"pointIndex": 14,
-	"value": "205"
-}, {
-	"pointIndex": 8,
-	"value": "0"
-}, {
-	"pointIndex": 7,
-	"value": "0"
-}, {
-	"pointIndex": 5,
-	"value": "192"
-}, {
-	"pointIndex": 9,
-	"value": "0"
-}, {
-	"pointIndex": 6,
-	"value": "200"
-}],
-```
-
-### Point Type 
-
-From observation there are 3 types of data used in the zone details point data. 
-
- * Temperature Data
- * Binary Flags (i.e. on / off)
- * Time Data (based on epoch)
-
-
-| ID    | Length (bytes) | Data Type                         |
-| ----- | ---------------|---------------------------------- |
-| 1     | 1              | Binary Toggle (on/off) or integer |
-| 2     | 2              | Temperature                       |
-| 4     | 2              | Temperature Data                  |
-| 5     | 4              | Epoch Timestamp                   |
-
-### Point Index
-
-The point index is an integer that refers to the element is being controlled. The point index options for zone data are:
-
-| Index | Element              | Type |
-|-------|----------------------|------|
-| 3     | TODO                 | 0    |
-| 4     | Advance On / Off     | 1    |
-| 5     | Current Temp         | 2    |
-| 6     | Target Temp          | 4    |
-| 7     | Mode                 | 1    |
-| 8     | Boost Hours (0 to 3) | 1    |
-| 9     | Boost Timestamp      | 5    |
-| 10    | Boiler State         | 1    |
-| 11    | TODO                 | 0    |
-| 13    | TODO                 | 0    |
-| 14    | Boost Target Temp    | 4    |
-
-Mode: 0=auto, 1=all day, 2=on, 3=off
-
-Boiler state: 1=off, 2=on
-
-### MQTT Binary Point Data
-
-As previously mentioned the MQTT messages include a base64 binary encoded point data. The format of this tag, type, value in binary format. The format is:
-
-1 Byte header, 1 Byte Index, 1 Byte Type, Between 1 and 4 Bytes Value.
-
-The data in each type is:
-
- * Header - 00000000
- * Index  - The point index, e.g. 00001000 for Boost on / off.
- * Type   - The point type, e.g. 00000001 for binary toggle.
- * Value  - The point value, e.g. 00000001 for On in binary toggle type. 
-
-
-In some cases the `pointData` value can include more that one type of data encoded in the same message.
-
-Note: The header has always been observed as `0` and may be part of a 2 byte index, if it is possible to have a large index value.
+- Initial documentation of 2021 API
+- HTTP and MQTT endpoint documentation
+- Basic point data structure
