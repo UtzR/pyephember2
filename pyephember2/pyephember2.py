@@ -8,12 +8,81 @@ import datetime
 import json
 import time
 import collections
+import threading
+import logging
 
 from enum import Enum
-from typing import OrderedDict
+from typing import OrderedDict, Callable, Optional, Dict, Any, List
 
 import requests
 import paho.mqtt.client as mqtt
+
+# Logger for MQTT operations
+_mqtt_logger = logging.getLogger("pyephember2.mqtt")
+
+
+def decode_point_data(pstr: str) -> Dict[int, Dict[str, Any]]:
+    """
+    Parse base64-encoded pointData into a dictionary.
+    
+    Returns dict mapping pointIndex to:
+        {
+            'index': int,
+            'name': str (PointIndex name or 'UNKNOWN'),
+            'datatype': int,
+            'raw_bytes': str (dotted bytes),
+            'value': int
+        }
+    """
+    lengths = {1: 1, 2: 2, 4: 2, 5: 4}
+    parsed = {}
+    mode = "wait"
+    datatype = None
+    index = None
+    value = []
+
+    def bytes_to_int(byte_data):
+        result = 0
+        for a_byte in byte_data:
+            result = result * 256 + int(a_byte)
+        return result
+
+    for number in base64.b64decode(pstr):
+        if mode == "wait":
+            if number != 0:
+                continue  # Skip unexpected bytes
+            mode = "index"
+            continue
+        if mode == "index":
+            index = number
+            mode = "datatype"
+            continue
+        if mode == "datatype":
+            datatype = number
+            if datatype not in lengths:
+                _mqtt_logger.warning(f"Unknown datatype: {datatype}")
+                mode = "wait"
+                continue
+            mode = "value"
+            continue
+        if mode == "value":
+            value.append(number)
+            if len(value) == lengths[datatype]:
+                try:
+                    index_name = PointIndex(index).name
+                except ValueError:
+                    index_name = 'UNKNOWN'
+                parsed[index] = {
+                    'index': index,
+                    'name': index_name,
+                    'datatype': datatype,
+                    'raw_bytes': ".".join([str(x) for x in value]),
+                    'value': bytes_to_int(value)
+                }
+                value = []
+                mode = "wait"
+            continue
+    return parsed
 
 
 class ZoneMode(Enum):
@@ -488,8 +557,65 @@ def get_zone_mode_value(zone, mode) -> int:
 
 class EphMessenger:
     """
-    MQTT interface to the EphEmber API
+    MQTT interface to the EphEmber API.
+    
+    Supports both sending commands and subscribing to receive updates.
     """
+
+    def __init__(self, parent):
+        self.api_url = 'eu-base-mqtt.topband-cloud.com'
+        self.api_port = 18883
+
+        self.client = None
+        self.client_id = None
+        self.parent = parent
+        
+        # Subscription state
+        self._subscribed = False
+        self._loop_running = False
+        self._subscribed_topics = []
+        
+        # Callbacks for received data
+        self._on_pointdata_callback: Optional[Callable] = None
+        self._on_message_callback: Optional[Callable] = None
+        self._on_connect_callback: Optional[Callable] = None
+        self._on_disconnect_callback: Optional[Callable] = None
+        
+        # External log callback for test.py integration
+        self._log_callback: Optional[Callable] = None
+        
+        # Zone state cache (updated from MQTT messages)
+        self._zone_state_cache: Dict[str, Dict[int, Any]] = {}
+
+    def _log(self, direction: str, content: str):
+        """Log MQTT communication if callback is set."""
+        if self._log_callback:
+            self._log_callback(direction, content)
+        _mqtt_logger.debug(f"[{direction}] {content}")
+
+    def set_log_callback(self, callback: Callable[[str, str], None]):
+        """Set callback for logging MQTT communication.
+        
+        Args:
+            callback: Function(direction, content) where direction is 'SEND', 'RECV', 'INFO'
+        """
+        self._log_callback = callback
+
+    def set_on_pointdata_callback(self, callback: Callable[[str, Dict], None]):
+        """Set callback for when pointData is received.
+        
+        Args:
+            callback: Function(zone_mac, parsed_pointdata) called when data arrives
+        """
+        self._on_pointdata_callback = callback
+
+    def set_on_message_callback(self, callback: Callable[[str, Dict], None]):
+        """Set callback for raw MQTT messages.
+        
+        Args:
+            callback: Function(topic, message_dict) called for every message
+        """
+        self._on_message_callback = callback
 
     def _zone_command_b64(self, zone, cmd, stop_mqtt=True, timeout=1):
         """
@@ -498,6 +624,7 @@ class EphMessenger:
         """
         product_id = zone["productId"]
         uid = zone["uid"]
+        topic = "/".join([product_id, uid, "download/pointdata"])
 
         msg = json.dumps(
             {
@@ -514,26 +641,92 @@ class EphMessenger:
             }
         )
 
+        # Log the outgoing message
+        self._log('SEND', f"Topic: {topic}\nPayload: {msg}")
+
         started_locally = False
         if not self.client or not self.client.is_connected():
             started_locally = True
             self.start()
 
-        pub = self.client.publish(
-            "/".join([product_id, uid, "download/pointdata"]), msg, 0
-        )
+        pub = self.client.publish(topic, msg, 0)
         pub.wait_for_publish(timeout=timeout)
 
-        if started_locally and stop_mqtt:
+        if started_locally and stop_mqtt and not self._subscribed:
             self.stop()
 
         return pub.is_published()
+
+    def _internal_on_connect(self, client, userdata, flags, reason_code, properties=None):
+        """Internal callback for MQTT connection."""
+        self._log('INFO', f"Connected to MQTT broker (reason: {reason_code})")
+        
+        # Subscribe to topics
+        for topic in self._subscribed_topics:
+            client.subscribe(topic, 0)
+            self._log('INFO', f"Subscribed to: {topic}")
+        
+        if self._on_connect_callback:
+            self._on_connect_callback(client, userdata, flags, reason_code)
+
+    def _internal_on_disconnect(self, client, userdata, disconnect_flags, reason_code, properties=None):
+        """Internal callback for MQTT disconnection."""
+        self._log('INFO', f"Disconnected from MQTT broker (reason: {reason_code})")
+        self._subscribed = False
+        
+        if self._on_disconnect_callback:
+            self._on_disconnect_callback(client, userdata, disconnect_flags, reason_code)
+
+    def _internal_on_message(self, client, userdata, message):
+        """Internal callback for received MQTT messages."""
+        try:
+            topic = message.topic
+            payload = message.payload.decode("utf-8").rstrip('\0')
+            
+            self._log('RECV', f"Topic: {topic}\nPayload: {payload}")
+            
+            msg_dict = json.loads(payload)
+            
+            # Call raw message callback if set
+            if self._on_message_callback:
+                self._on_message_callback(topic, msg_dict)
+            
+            # Parse pointData if present
+            if 'data' in msg_dict and 'pointData' in msg_dict['data']:
+                mac = msg_dict.get('data', {}).get('mac', 'unknown')
+                pointdata_b64 = msg_dict['data']['pointData']
+                parsed = decode_point_data(pointdata_b64)
+                
+                # Update local cache
+                if mac not in self._zone_state_cache:
+                    self._zone_state_cache[mac] = {}
+                self._zone_state_cache[mac].update({k: v['value'] for k, v in parsed.items()})
+                
+                # Update the parent's cached zone data (HTTP cache)
+                # This allows legacy functions to see MQTT updates
+                if self.parent:
+                    self.parent.update_zone_from_mqtt(mac, parsed)
+                
+                # Call pointdata callback if set
+                if self._on_pointdata_callback:
+                    self._on_pointdata_callback(mac, parsed)
+                    
+        except Exception as e:
+            self._log('INFO', f"Error processing message: {e}")
+            _mqtt_logger.exception("Error processing MQTT message")
 
     # Public interface
 
     def start(self, callbacks=None, loop_start=False):
         """
-        Start MQTT client
+        Start MQTT client.
+        
+        Args:
+            callbacks: Optional dict of callback names to functions (legacy support)
+            loop_start: If True, start the network loop in a background thread
+        
+        Returns:
+            The mqtt.Client instance
         """
         credentials = self.parent.messenging_credentials()
         self.client_id = '{}_{}'.format(
@@ -548,26 +741,122 @@ class EphMessenger:
         user_name = "app/{}".format(token)
         mclient.username_pw_set(user_name, token)
 
+        # Set internal callbacks
+        mclient.on_connect = self._internal_on_connect
+        mclient.on_disconnect = self._internal_on_disconnect
+        mclient.on_message = self._internal_on_message
+
+        # Legacy callback support
         if callbacks is not None:
             for key in callbacks.keys():
-                setattr(mclient, key, callbacks[key])
+                if key == 'on_connect':
+                    self._on_connect_callback = callbacks[key]
+                elif key == 'on_message':
+                    self._on_message_callback = callbacks[key]
+                else:
+                    setattr(mclient, key, callbacks[key])
 
+        self._log('INFO', f"Connecting to {self.api_url}:{self.api_port}")
         mclient.connect(self.api_url, self.api_port)
 
         if loop_start:
             mclient.loop_start()
+            self._loop_running = True
 
         return mclient
 
     def stop(self):
         """
-        Disconnect MQTT client if connected
+        Disconnect MQTT client if connected.
+        
+        Returns:
+            True if disconnected, False if no client
         """
         if not self.client:
             return False
+        
+        if self._loop_running:
+            self.client.loop_stop()
+            self._loop_running = False
+            
         if self.client.is_connected():
             self.client.disconnect()
+            
+        self._subscribed = False
+        self._log('INFO', "MQTT client stopped")
         return True
+
+    def subscribe_to_zone(self, zone) -> bool:
+        """
+        Subscribe to updates for a specific zone.
+        
+        Args:
+            zone: Zone dict containing productId and uid
+            
+        Returns:
+            True if subscription initiated
+        """
+        product_id = zone["productId"]
+        uid = zone["uid"]
+        topic = "/".join([product_id, uid, "upload/pointdata"])
+        
+        if topic not in self._subscribed_topics:
+            self._subscribed_topics.append(topic)
+        
+        if self.client and self.client.is_connected():
+            self.client.subscribe(topic, 0)
+            self._log('INFO', f"Subscribed to: {topic}")
+            self._subscribed = True
+            return True
+        return False
+
+    def subscribe_to_all_zones(self, zones: List[Dict]) -> int:
+        """
+        Subscribe to updates for multiple zones.
+        
+        Args:
+            zones: List of zone dicts
+            
+        Returns:
+            Number of zones subscribed to
+        """
+        count = 0
+        for zone in zones:
+            if self.subscribe_to_zone(zone):
+                count += 1
+        return count
+
+    def start_listening(self, zones: List[Dict] = None):
+        """
+        Start MQTT client, subscribe to zones, and begin listening loop.
+        
+        Args:
+            zones: Optional list of zones to subscribe to
+        """
+        # Add topics to subscribe list
+        if zones:
+            for zone in zones:
+                product_id = zone["productId"]
+                uid = zone["uid"]
+                topic = "/".join([product_id, uid, "upload/pointdata"])
+                if topic not in self._subscribed_topics:
+                    self._subscribed_topics.append(topic)
+        
+        # Start with background loop
+        self.start(loop_start=True)
+        self._subscribed = True
+
+    def get_cached_zone_state(self, mac: str) -> Optional[Dict[int, Any]]:
+        """
+        Get cached state for a zone (updated from MQTT messages).
+        
+        Args:
+            mac: Zone MAC address
+            
+        Returns:
+            Dict mapping PointIndex to value, or None if not cached
+        """
+        return self._zone_state_cache.get(mac)
 
     def send_zone_commands(self, zone, commands, stop_mqtt=True, timeout=1):
         """
@@ -595,18 +884,12 @@ class EphMessenger:
 
         ints_cmd = [x for cmd in commands for x in zone_command_to_ints(zone, cmd)]
 
+        # Don't stop MQTT if we're subscribed
+        effective_stop = stop_mqtt and not self._subscribed
+
         return self._zone_command_b64(
-            zone, ints_to_b64_cmd(ints_cmd), stop_mqtt, timeout
+            zone, ints_to_b64_cmd(ints_cmd), effective_stop, timeout
         )
-
-    def __init__(self, parent):
-        self.api_url = 'eu-base-mqtt.topband-cloud.com'
-        self.api_port = 18883
-
-        self.client = None
-        self.client_id = None
-
-        self.parent = parent
 
 
 class EphEmber:
@@ -1131,11 +1414,233 @@ class EphEmber:
         zone = self.get_zone(zoneid)
         return zone_mode(zone)
 
+    # =========================================================================
+    # MQTT-specific methods
+    # =========================================================================
+    
+    def set_mqtt_log_callback(self, callback: Callable[[str, str], None]):
+        """Set callback for MQTT communication logging.
+        
+        Args:
+            callback: Function(direction, content) for logging
+        """
+        self.messenger.set_log_callback(callback)
+
+    def set_mqtt_pointdata_callback(self, callback: Callable[[str, Dict], None]):
+        """Set callback for when MQTT pointData is received.
+        
+        Args:
+            callback: Function(zone_mac, parsed_pointdata)
+        """
+        self.messenger.set_on_pointdata_callback(callback)
+
+    def start_mqtt_listener(self, zones: List[Dict] = None):
+        """Start MQTT listener to receive zone updates.
+        
+        Args:
+            zones: Optional list of zone dicts to subscribe to.
+                   If None, call get_zones() first and subscribe to all.
+        """
+        if zones is None:
+            homes = self.get_zones()
+            zones = []
+            for home in homes:
+                zones.extend(home.get('zones', []))
+        
+        self.messenger.start_listening(zones)
+
+    def stop_mqtt_listener(self):
+        """Stop MQTT listener."""
+        self.messenger.stop()
+
+    def is_mqtt_connected(self) -> bool:
+        """Check if MQTT client is connected."""
+        return self.messenger.client and self.messenger.client.is_connected()
+
+    def get_mqtt_cached_state(self, mac: str) -> Optional[Dict[int, Any]]:
+        """Get cached zone state from MQTT updates.
+        
+        Args:
+            mac: Zone MAC address
+            
+        Returns:
+            Dict mapping PointIndex to value, or None
+        """
+        return self.messenger.get_cached_zone_state(mac)
+
+    # MQTT control methods - these use MQTT directly (existing behavior)
+    # The existing set_* methods already use MQTT via messenger.send_zone_commands()
+    # These explicit _mqtt variants make it clear which transport is used
+    
+    def set_zone_target_temperature_mqtt(self, zoneid, target_temperature) -> bool:
+        """Set target temperature via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            target_temperature: Target temperature in degrees
+            
+        Returns:
+            True if command was published successfully
+        """
+        zone = self.get_zone(zoneid)
+        return self._set_zone_target_temperature(zone, target_temperature)
+
+    def set_zone_mode_mqtt(self, zoneid, mode: ZoneMode) -> bool:
+        """Set zone mode via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            mode: ZoneMode enum value
+            
+        Returns:
+            True if command was published successfully
+        """
+        assert isinstance(mode, ZoneMode)
+        zone = self.get_zone(zoneid)
+        modevalue = get_zone_mode_value(zone, mode)
+        modeindex = GetPointIndex(zone, PointIndex.MODE)
+        return self._set_zone_mode(zone, modevalue, modeindex)
+
+    def activate_zone_boost_mqtt(self, zoneid, boost_temperature=None,
+                                  num_hours=1, timestamp=0) -> bool:
+        """Activate boost via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            boost_temperature: Optional boost temperature
+            num_hours: Boost duration (1, 2, or 3)
+            timestamp: Boost start timestamp (0 for now, None to omit)
+            
+        Returns:
+            True if command was published successfully
+        """
+        return self._set_zone_boost(
+            self.get_zone(zoneid), boost_temperature,
+            num_hours, timestamp=timestamp
+        )
+
+    def deactivate_zone_boost_mqtt(self, zoneid) -> bool:
+        """Deactivate boost via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            
+        Returns:
+            True if command was published successfully
+        """
+        return self.activate_zone_boost_mqtt(zoneid, num_hours=0, timestamp=None)
+
+    def turn_zone_on_mqtt(self, zoneid) -> bool:
+        """Turn zone ON via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            
+        Returns:
+            True if command was published successfully
+        """
+        return self.set_zone_mode_mqtt(zoneid, ZoneMode.ON)
+
+    def turn_zone_off_mqtt(self, zoneid) -> bool:
+        """Turn zone OFF via MQTT.
+        
+        Args:
+            zoneid: Zone ID
+            
+        Returns:
+            True if command was published successfully
+        """
+        return self.set_zone_mode_mqtt(zoneid, ZoneMode.OFF)
+
     def reset_login(self):
         """
         reset the login data to force a re-login
         """
         self._login_data = None
+
+    def update_zone_from_mqtt(self, mac: str, parsed_pointdata: Dict[int, Dict]) -> bool:
+        """
+        Update cached zone data from MQTT pointData.
+        
+        This allows MQTT updates to be reflected in the cached HTTP data,
+        so legacy functions like zone_mode(), zone_current_temperature() etc.
+        will return the most up-to-date values without requiring an HTTP refresh.
+        
+        Args:
+            mac: Zone MAC address
+            parsed_pointdata: Dict from decode_point_data(), mapping pointIndex to
+                              {'index': int, 'name': str, 'datatype': int, 'value': int}
+        
+        Returns:
+            True if zone was found and updated, False otherwise
+        """
+        if not self._homes:
+            _mqtt_logger.debug("update_zone_from_mqtt: No homes cached")
+            return False
+        
+        # Find zone by MAC
+        for home in self._homes:
+            for zone in home.get('zones', []):
+                if zone.get('mac') == mac:
+                    zone_name_str = zone.get('name', 'Unknown')
+                    _mqtt_logger.debug(f"Found zone '{zone_name_str}' for MAC {mac}")
+                    
+                    # Ensure pointDataList exists
+                    if 'pointDataList' not in zone:
+                        zone['pointDataList'] = []
+                    
+                    # Update each point from MQTT data
+                    for point_index, point_info in parsed_pointdata.items():
+                        new_value = str(point_info['value'])
+                        
+                        # Find existing point by index
+                        point_found = False
+                        for i, point in enumerate(zone['pointDataList']):
+                            # Handle both int and string pointIndex
+                            existing_index = point.get('pointIndex')
+                            if existing_index == point_index or str(existing_index) == str(point_index):
+                                # Update in place
+                                zone['pointDataList'][i]['value'] = new_value
+                                point_found = True
+                                _mqtt_logger.debug(f"  Updated PointIndex {point_index} = {new_value}")
+                                break
+                        
+                        if not point_found:
+                            # Add new point
+                            zone['pointDataList'].append({
+                                'pointIndex': point_index,
+                                'value': new_value
+                            })
+                            _mqtt_logger.debug(f"  Added PointIndex {point_index} = {new_value}")
+                    
+                    # Update timestamp
+                    zone['timestamp'] = int(time.time() * 1000)
+                    zone['_last_mqtt_update'] = datetime.datetime.now().isoformat()
+                    
+                    _mqtt_logger.info(f"Updated zone '{zone_name_str}' from MQTT with {len(parsed_pointdata)} points")
+                    return True
+        
+        _mqtt_logger.debug(f"update_zone_from_mqtt: Zone with MAC {mac} not found")
+        return False
+
+    def get_zone_by_mac(self, mac: str):
+        """
+        Get zone information by MAC address.
+        
+        Args:
+            mac: Zone MAC address
+            
+        Returns:
+            Zone dict or None if not found
+        """
+        if not self._homes:
+            return None
+        
+        for home in self._homes:
+            for zone in home.get('zones', []):
+                if zone.get('mac') == mac:
+                    return zone
+        return None
 
     # Ctor
     def __init__(self, username, password, cache_home=False):
