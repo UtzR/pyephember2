@@ -1,0 +1,916 @@
+# HTTP Communication Log
+# Started: 2025-12-20T12:35:58.650830
+======================================================================
+
+
+======================================================================
+>>> SENDING REQUEST [2025-12-20T12:35:58.844503]
+======================================================================
+Method: GET
+Endpoint: homes/list
+Send Token: True
+Timeout: 10
+
+
+----------------------------------------------------------------------
+<<< RECEIVED RESPONSE [2025-12-20T12:35:59.026730]
+----------------------------------------------------------------------
+Status Code: 200
+Body:
+{
+  "data": [
+    {
+      "deviceType": 3,
+      "gatewayid": "1663767268",
+      "invitecode": "8724B",
+      "name": "77 Rossbrook",
+      "productId": "135d55256c9b40d79bbb66fa23380ffd",
+      "sysTemType": "EMBER-PS",
+      "uid": "2f0f00e1914eed7b6766a0486fbe7e79",
+      "zoneCount": 3
+    }
+  ],
+  "message": "succ.",
+  "status": 0,
+  "timestamp": 1766234159020
+}
+
+======================================================================
+>>> SENDING REQUEST [2025-12-20T12:35:59.029953]
+======================================================================
+Method: POST
+Endpoint: homesVT/zoneProgram
+Send Token: True
+Timeout: 10
+Data:
+{
+  "gateWayId": "1663767268"
+}
+
+----------------------------------------------------------------------
+<<< RECEIVED RESPONSE [2025-12-20T12:35:59.280983]
+----------------------------------------------------------------------
+Status Code: 200
+Body:
+{
+  "data": [
+    {
+      "deviceDays": [
+        {
+          "dayType": 0,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "5674f664ae3b41cdb22896dc5205534f",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "37d4ac9ab74e4abfa8bcb7588d2687a7",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "78e80e18250e4c909d6428e778ae1ac2",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "dfd06d0a30424e9d8d92cce522f162c0",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 1,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "35f9e6fd23b64e36a6d87d982a0f006d",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "8c0a7aee226b46718ff926e2f13a0e94",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "b94dbb65dc9f456389873632d1ca264e",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "2ec51377905c4445ae901453fe38a334",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 2,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "00cefdc63cf143b596c4221326095df2",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "e0e340a7f84b445ba252ad7442184844",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "daa886af22304073ba0638827334a6e2",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "9067f6ca11194d7fb4e850d3b8c299ae",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 3,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "830b5658642747fdbae1c7ac17fc69c4",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "513b0c54540247e89a2a3482370ad50c",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "060876b996c0474eb08dc76345798ef6",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "2d7ec70ec5ab456bbd0072d76e5d4857",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 4,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "179bef8c05f94f40af0b96a8148b4b49",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "c57e13564fc54b70be50f264b0ddcef1",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "ba3284bc1c5b4bc9a81b4afa319dd890",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "df65507ae3a74847970c2cb453130031",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 5,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "699817421c934401b42561b7afe4563d",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "ff668c1d3deb4081a8f5e58d87eafff8",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "05127add1f9c4efe86e7e644e5cee61f",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "50ee09ea96424f36b1752aa89aec7837",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 6,
+          "deviceId": "e8ea9d17821644559a5f4c779e81dfee",
+          "id": "4e4561a5f30e4b35a5bdc5be22c0f7e8",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "31069570738b420abe57b078774d8c2a",
+            "startTime": 70,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 120,
+            "id": "00c43001f6d949f0b4a558432726a61d",
+            "startTime": 120,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 163,
+            "id": "1010cc16b21c4193a5c9f77374c9c535",
+            "startTime": 163,
+            "updateTime": null
+          },
+          "programType": null
+        }
+      ],
+      "deviceType": 4,
+      "icon": null,
+      "isonline": true,
+      "mac": "10ba77690",
+      "name": "Hot Water",
+      "pointDataList": [
+        {
+          "pointIndex": 11,
+          "value": "0"
+        },
+        {
+          "pointIndex": 17,
+          "value": "515645116"
+        },
+        {
+          "pointIndex": 6,
+          "value": "500"
+        },
+        {
+          "pointIndex": 3,
+          "value": "11"
+        },
+        {
+          "pointIndex": 18,
+          "value": "5850131"
+        },
+        {
+          "pointIndex": 7,
+          "value": "3"
+        },
+        {
+          "pointIndex": 5,
+          "value": "525"
+        },
+        {
+          "pointIndex": 9,
+          "value": "1766227949"
+        },
+        {
+          "pointIndex": 10,
+          "value": "2"
+        },
+        {
+          "pointIndex": 15,
+          "value": "36766257"
+        },
+        {
+          "pointIndex": 14,
+          "value": "500"
+        },
+        {
+          "pointIndex": 8,
+          "value": "1"
+        },
+        {
+          "pointIndex": 16,
+          "value": "0"
+        },
+        {
+          "pointIndex": 4,
+          "value": "0"
+        },
+        {
+          "pointIndex": 13,
+          "value": "1"
+        }
+      ],
+      "productId": "135d55256c9b40d79bbb66fa23380ffd",
+      "systemType": "EMBER-PS",
+      "uid": "2f0f00e1914eed7b6766a0486fbe7e79",
+      "zoneid": "e8ea9d17821644559a5f4c779e81dfee"
+    },
+    {
+      "deviceDays": [
+        {
+          "dayType": 0,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "a440bb62851a477c82f00ece76f8cf89",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 100,
+            "id": "b8d7e19ce6754b828297e4d6cb6cd655",
+            "startTime": 90,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "d23529e267e74a3c885fa17eb59a7968",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 232,
+            "id": "fe21d4062d274cfcae2b4f332309e513",
+            "startTime": 232,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 1,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "39874ade6575416ba1f1aa8077361fef",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 74,
+            "id": "d248f137ba1a497c8a16f91ebc634fe7",
+            "startTime": 63,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "0ce1cbe984eb4a8e908c8833bd2afcee",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "ad88b54386db4846bfad84ed96064cf9",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 2,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "262ec690ff2f43e497c94aa86653fbbe",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "f009442386f44b10b7b9b8b6f2fead3a",
+            "startTime": 63,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "844bd8d6ba874b278ff7a964ced26ae8",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "e3fa4472dc3442cbaaa95684e6ac031a",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 3,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "63c13f201e00432e854c4192ab403c40",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "af9edf1276a7474a89cf8566a3dac649",
+            "startTime": 63,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "6013f3a3e8c942c586897ea11b714feb",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "b5a2eda7ec554b7687a449bf79f8cf2c",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 4,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "3c12460a99b54a1a9eca5a9e4b42e754",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "ebdac700cb714fb1aa1d9b2da0c676f4",
+            "startTime": 63,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "3040bb48779e41578cbb90fb1384e3f6",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "8c338d0bd4a641cba0fc604f5d1312f3",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 5,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "3a6e5a907cc8495290f9f184d24925c4",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 73,
+            "id": "a4aef1bae9164252b99ff5075bfd3872",
+            "startTime": 63,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 220,
+            "id": "8bfa3dd5246946c9a42b3ae9e80603eb",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "46566610a2994622b345bfb871a8be6c",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 6,
+          "deviceId": "b3416da4b522435a95f77e53c3e8a17e",
+          "id": "bbc47b04690d473a9b2ad1da9f3576a8",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 101,
+            "id": "37ee8cfb7d85476392ae84366b984ad6",
+            "startTime": 101,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 191,
+            "id": "bac5f61d74cc448aa4bd8247e2792ab4",
+            "startTime": 191,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "f5680105a65044d2a6fa6d2bbbdd9cf4",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        }
+      ],
+      "deviceType": 2,
+      "icon": null,
+      "isonline": true,
+      "mac": "10ba77691",
+      "name": "Upstairs",
+      "pointDataList": [
+        {
+          "pointIndex": 7,
+          "value": "3"
+        },
+        {
+          "pointIndex": 15,
+          "value": "991952896"
+        },
+        {
+          "pointIndex": 11,
+          "value": "0"
+        },
+        {
+          "pointIndex": 17,
+          "value": "0"
+        },
+        {
+          "pointIndex": 18,
+          "value": "0"
+        },
+        {
+          "pointIndex": 4,
+          "value": "0"
+        },
+        {
+          "pointIndex": 6,
+          "value": "190"
+        },
+        {
+          "pointIndex": 14,
+          "value": "190"
+        },
+        {
+          "pointIndex": 5,
+          "value": "200"
+        },
+        {
+          "pointIndex": 16,
+          "value": "329777152"
+        },
+        {
+          "pointIndex": 10,
+          "value": "1"
+        },
+        {
+          "pointIndex": 3,
+          "value": "12"
+        },
+        {
+          "pointIndex": 8,
+          "value": "1"
+        },
+        {
+          "pointIndex": 9,
+          "value": "1766227949"
+        },
+        {
+          "pointIndex": 13,
+          "value": "1"
+        }
+      ],
+      "productId": "135d55256c9b40d79bbb66fa23380ffd",
+      "systemType": "EMBER-PS",
+      "uid": "2f0f00e1914eed7b6766a0486fbe7e79",
+      "zoneid": "b3416da4b522435a95f77e53c3e8a17e"
+    },
+    {
+      "deviceDays": [
+        {
+          "dayType": 0,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "e8441310192f46459dd5947ec1274eda",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 93,
+            "id": "b04d2648b1eb47e6b63768c9d1efab82",
+            "startTime": 83,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "b78d3e9ed764487e8e87ad113a5baa12",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "ee0751e380ea4db092609c821ad8eeb7",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 1,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "b3cdde9682e64873b393bc5f840bce1c",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 75,
+            "id": "e2f6aeae61f3470d8afe0fe1842bdbf4",
+            "startTime": 75,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "e6e068bcdda84917b7d6e4592de8e444",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "b9df471a4a4e48b0a820c744e78f010d",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 2,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "9139939db323466d9fe43ca64d50e62b",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 75,
+            "id": "e222eb6ef5e240cfab019902a6be2880",
+            "startTime": 75,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "ceffe6cb2df64e489d120afc9bc0ca37",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "0f1e0a7d63654db2a5b0edc39cc40583",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 3,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "ec0a2d461d36493d9d310b871e6257d9",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 75,
+            "id": "ec604c85f568426fbd052ae27f3a1af4",
+            "startTime": 75,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "91afc426f394481280bcc5f3b8d1dcba",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "f9036e98f0744cafa7d89819f55b1793",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 4,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "085a0d49915845729ef3306c32df1100",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 75,
+            "id": "849cc780238f40d0ab5361c19c56941c",
+            "startTime": 75,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "a98e5d63fba44aa98feb3ae36d789637",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "585d9d8956ff4263b2cd2c0362ade035",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 5,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "81d0392d91e74a48ae70d799ed80d1b7",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 75,
+            "id": "93970a6a3b7e4b2bb4604c3e6b977c77",
+            "startTime": 75,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "ed579b27d33d4702af929eedf914a830",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "34447f597f1448608442eaccf5e37a5e",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        },
+        {
+          "dayType": 6,
+          "deviceId": "16284e072f204bc790c6ca614215fc36",
+          "id": "f694b0c2ae2c4729bd3b324759dadb13",
+          "p1": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 93,
+            "id": "a0ff311c4c39493bbc1bc2db442b9d38",
+            "startTime": 83,
+            "updateTime": null
+          },
+          "p2": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "c6c189b8cda744c1b66c49b8b665d2c4",
+            "startTime": 190,
+            "updateTime": null
+          },
+          "p3": {
+            "createTime": null,
+            "delFlag": null,
+            "endTime": 235,
+            "id": "927b1c290ff6418289c3bba021c05331",
+            "startTime": 235,
+            "updateTime": null
+          },
+          "programType": null
+        }
+      ],
+      "deviceType": 2,
+      "icon": null,
+      "isonline": true,
+      "mac": "10ba77692",
+      "name": "Downstairs",
+      "pointDataList": [
+        {
+          "pointIndex": 5,
+          "value": "202"
+        },
+        {
+          "pointIndex": 13,
+          "value": "1"
+        },
+        {
+          "pointIndex": 17,
+          "value": "0"
+        },
+        {
+          "pointIndex": 16,
+          "value": "329777152"
+        },
+        {
+          "pointIndex": 6,
+          "value": "200"
+        },
+        {
+          "pointIndex": 15,
+          "value": "1000144896"
+        },
+        {
+          "pointIndex": 9,
+          "value": "0"
+        },
+        {
+          "pointIndex": 18,
+          "value": "0"
+        },
+        {
+          "pointIndex": 8,
+          "value": "0"
+        },
+        {
+          "pointIndex": 11,
+          "value": "0"
+        },
+        {
+          "pointIndex": 10,
+          "value": "1"
+        },
+        {
+          "pointIndex": 4,
+          "value": "0"
+        },
+        {
+          "pointIndex": 7,
+          "value": "2"
+        },
+        {
+          "pointIndex": 14,
+          "value": "200"
+        },
+        {
+          "pointIndex": 3,
+          "value": "12"
+        }
+      ],
+      "productId": "135d55256c9b40d79bbb66fa23380ffd",
+      "systemType": "EMBER-PS",
+      "uid": "2f0f00e1914eed7b6766a0486fbe7e79",
+      "zoneid": "16284e072f204bc790c6ca614215fc36"
+    }
+  ],
+  "message": "succ.",
+  "status": 0,
+  "timestamp": 1766234159258
+}

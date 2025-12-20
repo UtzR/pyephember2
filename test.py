@@ -226,12 +226,21 @@ def print_subheader(text):
 
 
 def decode_time(encoded_time):
-    """Decode time from 10-minute units since midnight."""
+    """
+    Decode schedule time format to HH:MM.
+    The API uses a format where the integer represents HHMM where the last digit
+    is 10-minute units. For example: 90 = 09:00, 100 = 10:00, 173 = 17:30.
+    This matches the scheduletime_to_time function in pyephember2.py.
+    """
     if encoded_time is None:
         return "N/A"
-    total_minutes = encoded_time * 10
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
+    # Convert to string to extract digits
+    time_str = str(encoded_time)
+    if len(time_str) == 0:
+        return "00:00"
+    # Last digit is 10-minute units, rest is hours
+    hours = int(time_str[:-1]) if len(time_str) > 1 else 0
+    minutes = 10 * int(time_str[-1])
     return f"{hours:02d}:{minutes:02d}"
 
 
