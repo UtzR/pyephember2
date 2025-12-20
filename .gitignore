@@ -101,3 +101,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 .DS_Store
+
+test_log_http 
+test_log_mqtt
