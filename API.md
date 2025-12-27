@@ -1474,20 +1474,34 @@ From observation there are 3 types of data used in the zone details point data.
 
 **Temperature Scale (December 2025 update):** All temperatures are stored as `degreesC × 10`. For example: 19.5°C = 195, 50.0°C = 500 (hot water).
 
+### Device-Types (December 2025 update)
+
+Known `deviceType`:
+
+| deviceType | Description | Product                           | 
+|------------|-------------|-----------------------------------|
+| 2          | Thermostat  | Thermostat on an RX7-RF           | 
+| 4          | Hot Water   | Hot Water Controller on an RX7-RF |
+| 258        | Thermostat  | Thermostat on an RF1A-OT          |
+| 514        | Thermostat  | Thermostat on an RX7-RF-V2        | 
+| 773        | TRV         |                                   |
+
 ### Point Index
 
-The point index is an integer that refers to the element is being controlled. The point index options for zone data are:
+The point index is an integer that refers to the element is being controlled. 
+Some point index values can be written to, others are read only.
+Some point index values are the same for all devices some are specific for the device.
 
-| Index | Element              | Type | Values / Notes | Status |
-|-------|----------------------|------|----------------|--------|
-| 3     | TODO                 | 1    | Values 11, 12 observed | UNKNOWN |
-| 4     | Advance On / Off     | 1    | 0/1 toggle | OBSERVED |
-| 5     | Current Temp         | 2    | temp × 10 | ✅ CONFIRMED |
-| 6     | Target Temp          | 4    | temp × 10 | ✅ CONFIRMED |
-| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | ✅ CONFIRMED |
-| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours | ✅ CONFIRMED |
-| 9     | Boost Timestamp      | 5    | Unix epoch (seconds) | ✅ CONFIRMED |
-| 10    | Boiler State         | 1    | 1=off, 2=on | ✅ CONFIRMED |
+The generic point index options for zone data are:
+
+| Index | Element              | Type | Values / Notes         | Status    | R/W    |
+|-------|----------------------|------|------------------------|-----------|--------|
+| 3     | TODO                 | 1    | Values 11, 12 observed | UNKNOWN   |        |
+| 4     | Advance On / Off     | 1    | 0/1 toggle             | OBSERVED  |        |
+| 5     | Current Temp         | 2    | temp × 10              | CONFIRMED |        |
+| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours  | CONFIRMED |        |
+| 9     | Boost Timestamp      | 5    | Unix epoch (seconds)   | CONFIRMED |        |
+
 | 11    | TODO                 | 1    | Often 0 | UNKNOWN |
 | 13    | TODO                 | 1    | Always 1 observed | UNKNOWN |
 | 14    | Boost Target Temp    | 4    | temp × 10 | ✅ CONFIRMED |
@@ -1500,9 +1514,15 @@ Mode: 0=auto, 1=all day, 2=on, 3=off
 
 Boiler state: 1=off, 2=on
 
-### Device-Specific Index Mapping (December 2025 update)
 
 Some point indices vary by `deviceType`:
+
+#### deviceType = 2
+| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
+|-------|----------------------|------|--------------------------------|-----------|--------|
+| 6     | Target Temp          | 4    | temp × 10                      | CONFIRMED |        |
+| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |        |
+| 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |        |
 
 | deviceType | Description | MODE index | TARGET_TEMP index | Notes |
 |------------|-------------|------------|-------------------|-------|
