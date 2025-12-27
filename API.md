@@ -1484,7 +1484,7 @@ Known `deviceType`:
 | 4          | Hot Water   | Hot Water Controller on an RX7-RF |
 | 258        | Thermostat  | Thermostat on an RF1A-OT          |
 | 514        | Thermostat  | Thermostat on an RX7-RF-V2        | 
-| 773        | TRV         |                                   |
+| 773        | TRV         | TRV on an RF16?                   |
 
 ### Point Index
 
@@ -1546,6 +1546,10 @@ The generic point index options for zone data are:
 
 
 #### deviceType = 773
+| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
+|-------|----------------------|------|--------------------------------|-----------|--------|
+| 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
+
 | deviceType | Description | MODE index | TARGET_TEMP index | Notes |
 |------------|-------------|------------|-------------------|-------|
 | 2 | Thermostat | 7 | 6 | Standard |
