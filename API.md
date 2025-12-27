@@ -1534,28 +1534,35 @@ The generic point index options for zone data are:
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
-| 9     | Unknown              | ?    | always 0                       | CONFIRMED |  R     |
-| 10    | Unknown              | ?    | always 0                       | CONFIRMED |  R     |
-| 11    | Mode                 | 1    | 0 = AUTO, 1 = MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
+| 9     | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
+| 10    | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
+| 11    | Mode                 | 1    | 0 = AUTO, 1 = ON/MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
 | 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
-| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active       | CONFIRMED |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
 | 15    | Boost End Time       | 5    | Unix timestamp or 0            | CONFIRMED |   R    |
 | 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | CONFIRMED |   ?    |
 
 #### deviceType = 514 
-
+| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
+|-------|----------------------|------|--------------------------------|-----------|--------|
+| 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
+| 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
+| 9     | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
+| 10    | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
+| 11    | Mode                 | 1    | 0 = AUTO, 4 = OFF, 9=ALL DAY, 10=ON/MANUAL | VERIFY |  R/W   |
+| 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
+| 15    | Boost End Time       | 5    | Unix timestamp or 0            | VERIFY    |   R    |
+| 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | VERIFY    |   ?    |
 
 #### deviceType = 773
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
+| 11    | Mode                 | 1    | 0 = AUTO, 1 = ON/MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
 | 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
+| 15    | Boost End Time       | 5    | Unix timestamp or 0            | VERIFY |   R    |
 
-| deviceType | Description | MODE index | TARGET_TEMP index | Notes |
-|------------|-------------|------------|-------------------|-------|
-| 2 | Thermostat | 7 | 6 | Standard |
-| 4 | Hot Water Controller | 7 | 6 | Standard |
-| 514 | Hot Water Controller (alt) | 11 | 6 | Alternate mode index |
-| 773 | TRV | 11 | 12 | Different indices |
 
 ### MQTT Binary Point Data
 
