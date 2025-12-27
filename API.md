@@ -1496,14 +1496,10 @@ The generic point index options for zone data are:
 
 | Index | Element              | Type | Values / Notes         | Status    | R/W    |
 |-------|----------------------|------|------------------------|-----------|--------|
-| 3     | Unknown              | 1    | Values 11, 12 observed | UNKNOWN   |        |
-| 4     | Advance On / Off     | 1    | 0/1 toggle             | OBSERVED  |        |
+| 4     | Advance On / Off     | 1    | 0/1 toggle             | VERIFY    |        |
 | 5     | Current Temp         | 2    | temp × 10              | CONFIRMED |   R    |
 | 6     | Target Temp          | 4    | temp × 10              | CONFIRMED |   R/W  |
 | 14    | Boost target Temp    | 4    | temp × 10              | CONFIRMED |   R/W  |
-| 17    | Counter/telemetry    | 5    | Often 0                | OBSERVED  |        |
-| 18    | Counter/telemetry    | 5    | Often 0                | OBSERVED  |        |
-
 
 
 #### deviceType = 2
@@ -1513,9 +1509,6 @@ The generic point index options for zone data are:
 | 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
 | 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
 | 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
-| 11    | Unknown              | 1    | Often 0                        | UNKNOWN   |        |
-| 15    | Schedule bitmap      | 5    | Changes with schedule          | OBSERVED  |        |
-| 16    | Capability bitmap    | 5    | Often constant                 | OBSERVED  |        |
 
 #### deviceType = 4
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
@@ -1524,18 +1517,12 @@ The generic point index options for zone data are:
 | 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
 | 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
 | 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
-| 11    | Unknown              | 1    | Often 0                        | UNKNOWN   |        |
-| 13    | Unknown              | 1    | Always 1 observed              | UNKNOWN   |        |
-| 15    | Schedule bitmap      | 5    | Changes with schedule          | OBSERVED  |        |
-| 16    | Capability bitmap    | 5    | Often constant                 | OBSERVED  |        |
 
 #### deviceType = 258
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
-| 9     | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
-| 10    | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
 | 11    | Mode                 | 1    | 0 = AUTO, 1 = ON/MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
 | 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
@@ -1547,8 +1534,6 @@ The generic point index options for zone data are:
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
-| 9     | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
-| 10    | Unknown              | ?    | always 0                       | UNKNOWN   |  R     |
 | 11    | Mode                 | 1    | 0 = AUTO, 4 = OFF, 9=ALL DAY, 10=ON/MANUAL | VERIFY |  R/W   |
 | 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
