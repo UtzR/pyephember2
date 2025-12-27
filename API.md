@@ -1496,34 +1496,56 @@ The generic point index options for zone data are:
 
 | Index | Element              | Type | Values / Notes         | Status    | R/W    |
 |-------|----------------------|------|------------------------|-----------|--------|
-| 3     | TODO                 | 1    | Values 11, 12 observed | UNKNOWN   |        |
+| 3     | Unknown              | 1    | Values 11, 12 observed | UNKNOWN   |        |
 | 4     | Advance On / Off     | 1    | 0/1 toggle             | OBSERVED  |        |
-| 5     | Current Temp         | 2    | temp × 10              | CONFIRMED |        |
-| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours  | CONFIRMED |        |
-| 9     | Boost Timestamp      | 5    | Unix epoch (seconds)   | CONFIRMED |        |
-
-| 11    | TODO                 | 1    | Often 0 | UNKNOWN |
-| 13    | TODO                 | 1    | Always 1 observed | UNKNOWN |
-| 14    | Boost Target Temp    | 4    | temp × 10 | ✅ CONFIRMED |
-| 15    | Schedule bitmap      | 5    | Changes with schedule | OBSERVED |
-| 16    | Capability bitmap    | 5    | Often constant | OBSERVED |
-| 17    | Counter/telemetry    | 5    | Often 0 | OBSERVED |
-| 18    | Counter/telemetry    | 5    | Often 0 | OBSERVED |
-
-Mode: 0=auto, 1=all day, 2=on, 3=off
-
-Boiler state: 1=off, 2=on
+| 5     | Current Temp         | 2    | temp × 10              | CONFIRMED |   R    |
+| 6     | Target Temp          | 4    | temp × 10              | CONFIRMED |   R/W  |
+| 14    | Boost target Temp    | 4    | temp × 10              | CONFIRMED |   R/W  |
+| 17    | Counter/telemetry    | 5    | Often 0                | OBSERVED  |        |
+| 18    | Counter/telemetry    | 5    | Often 0                | OBSERVED  |        |
 
 
-Some point indices vary by `deviceType`:
 
 #### deviceType = 2
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
-| 6     | Target Temp          | 4    | temp × 10                      | CONFIRMED |        |
-| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |        |
-| 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |        |
+| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |  R/W   |
+| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
+| 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
+| 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
+| 11    | Unknown              | 1    | Often 0                        | UNKNOWN   |        |
+| 15    | Schedule bitmap      | 5    | Changes with schedule          | OBSERVED  |        |
+| 16    | Capability bitmap    | 5    | Often constant                 | OBSERVED  |        |
 
+#### deviceType = 4
+| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
+|-------|----------------------|------|--------------------------------|-----------|--------|
+| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |  R/W   |
+| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
+| 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
+| 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
+| 11    | Unknown              | 1    | Often 0                        | UNKNOWN   |        |
+| 13    | Unknown              | 1    | Always 1 observed              | UNKNOWN   |        |
+| 15    | Schedule bitmap      | 5    | Changes with schedule          | OBSERVED  |        |
+| 16    | Capability bitmap    | 5    | Often constant                 | OBSERVED  |        |
+
+#### deviceType = 258
+| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
+|-------|----------------------|------|--------------------------------|-----------|--------|
+| 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
+| 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
+| 9     | Unknown              | ?    | always 0                       | CONFIRMED |  R     |
+| 10    | Unknown              | ?    | always 0                       | CONFIRMED |  R     |
+| 11    | Mode                 | 1    | 0 = AUTO, 1 = MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
+| 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active       | CONFIRMED |  R/W   |
+| 15    | Boost End Time       | 5    | Unix timestamp or 0            | CONFIRMED |   R    |
+| 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | CONFIRMED |   ?    |
+
+#### deviceType = 514 
+
+
+#### deviceType = 773
 | deviceType | Description | MODE index | TARGET_TEMP index | Notes |
 |------------|-------------|------------|-------------------|-------|
 | 2 | Thermostat | 7 | 6 | Standard |
