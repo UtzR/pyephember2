@@ -1498,13 +1498,13 @@ The generic point index options for zone data are:
 |-------|----------------------|------|------------------------|-----------|--------|
 | 4     | Advance On / Off     | 1    | 0/1 toggle             | VERIFY    |        |
 | 5     | Current Temp         | 2    | temp × 10              | CONFIRMED |   R    |
-| 6     | Target Temp          | 4    | temp × 10              | CONFIRMED |   R/W  |
-| 14    | Boost target Temp    | 4    | temp × 10              | CONFIRMED |   R/W  |
+| 14    | Setpoint (Boost)     | 4    | temp × 10              | CONFIRMED |   R/W  |
 
 
 #### deviceType = 2
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
+| 6     | Setpoint (Any Mode)  | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |  R/W   |
 | 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
 | 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
@@ -1513,6 +1513,7 @@ The generic point index options for zone data are:
 #### deviceType = 4
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
+| 6     | Setpoint (Any Mode)  | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |  R/W   |
 | 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
 | 9     | Boost Timestamp      | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
@@ -1521,24 +1522,29 @@ The generic point index options for zone data are:
 #### deviceType = 258
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
+| 6     | Setpoint (Read Only) | 4    | temp × 10                      | CONFIRMED |  R     |
 | 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 11    | Mode                 | 1    | 0 = AUTO, 1 = ON/MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
-| 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
-| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
+| 12    | Setpoint (Man Mode)  | 4    | temp × 10                      | CONFIRMED |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours) | VERIFY    |  R/W   |
 | 15    | Boost End Time       | 5    | Unix timestamp or 0            | CONFIRMED |   R    |
 | 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | CONFIRMED |   ?    |
+| 17    | Setpoint (Auto Mode) | 4    | temp × 10                      | CONFIRMED |  R/W   |
+| 18    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
 
 #### deviceType = 514 
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
+| 6     | Setpoint (Read Only) | 4    | temp × 10                      | VERIFY    |  R     |
 | 7     | Hi Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 8     | Lo Temp Limit        | 2    | temp × 10                      | CONFIRMED |  R     |
 | 11    | Mode                 | 1    | 0 = AUTO, 4 = OFF, 9=ALL DAY, 10=ON/MANUAL | VERIFY |  R/W   |
 | 12    | Manual Mode Setpoint | 4    | temp × 10                      | CONFIRMED |  R/W   |
-| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours)       | VERIFY    |  R/W   |
+| 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours) | VERIFY    |  R/W   |
 | 15    | Boost End Time       | 5    | Unix timestamp or 0            | VERIFY    |   R    |
 | 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | VERIFY    |   ?    |
+| 18    | Boiler State         | 1    | 1=off, 2=on                    | VERIFY    |   R    |
 
 #### deviceType = 773
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
