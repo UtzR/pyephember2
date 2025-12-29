@@ -1530,7 +1530,7 @@ The generic point index options for zone data are:
 | 13    | Boost State          | 1    | 0 = Inactive, 1 = Active (might be hours) | VERIFY    |  R/W   |
 | 15    | Boost End Time       | 5    | Unix timestamp or 0            | CONFIRMED |   R    |
 | 16    | Schedule Active Flag | 1    | 1/0, set in Auto mode          | CONFIRMED |   ?    |
-| 17    | Setpoint (Auto Mode) | 4    | temp × 10                      | VERIFY    |  R/W   |
+| 17    | Setpoint (Auto Mode) | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 18    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
 
 #### deviceType = 514 
