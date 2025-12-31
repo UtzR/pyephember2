@@ -8,7 +8,7 @@ import argparse
 import getpass
 import time
 
-from pyephember.pyephember import EphEmber, PointIndex
+from pyephember2.pyephember2 import EphEmber, EphFunction
 
 
 def ts_print(*stuff):
@@ -58,13 +58,11 @@ def process_point_data(pstr):
             continue
         if mode == "value":
             value.append(number)
-            try:
-                index_lookup = PointIndex(index).name
-            except ValueError:
-                index_lookup = 'UNKNOWN'
             if len(value) == lengths[datatype]:
+                # Note: Reverse lookup from pointIndex to EphFunction name is not possible
+                # with auto-incrementing enum values, so we use the index number as identifier
                 parsed[index] = (
-                    index_lookup,
+                    f'INDEX_{index}',
                     datatype,
                     ".".join([str(x) for x in value]),
                     bytes_to_int(value)

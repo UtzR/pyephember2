@@ -21,8 +21,6 @@ import requests
 from pyephember2.pyephember2 import (
     EphEmber,
     ZoneMode,
-    PointIndex,
-    GetPointIndex,
     zone_name,
     zone_mode,
     zone_current_temperature,
@@ -31,7 +29,6 @@ from pyephember2.pyephember2 import (
     zone_boost_hours,
     zone_is_hotwater,
     boiler_state,
-    zone_pointdata_value,
     decode_point_data,
 )
 
@@ -270,25 +267,78 @@ def print_pointdata_table(zone):
     """Print all PointData values in a table format."""
     print_subheader("Raw PointData")
     
-    # Known PointIndex meanings (from reverse-engineering)
-    point_meanings = {
-        3: "Zone mode (observed: 11, 12)",
-        4: "Unknown / reserved",
-        5: "Target temp ×10 (or current?)",
-        6: "Current temp ×10 (or target?)",
-        7: "Zone state (2=ON, 3=AUTO)",
-        8: "Boost hours?",
-        9: "Boost time?",
-        10: "Boiler state / zone type",
-        11: "Flags (bitmap)",
-        12: "Flags (bitmap)",
-        13: "Enabled flag",
-        14: "Current temp ×10 (dup?)",
-        15: "Schedule bitmap (KEY)",
-        16: "Static bitmap",
-        17: "Static / counters",
-        18: "Static / counters",
+    device_type = zone.get("deviceType")
+    
+    # Generic point indices (all device types)
+    generic_meanings = {
+        4: "Advance On / Off (0/1 toggle)",
+        5: "Current Temp (temp × 10)",
+        14: "Setpoint (Boost) (temp × 10)",
     }
+    
+    # Device-type-specific point indices
+    if device_type == 2:
+        point_meanings = {
+            **generic_meanings,
+            6: "Setpoint (Any Mode) (temp × 10)",
+            7: "Mode (0=auto, 1=all day, 2=on, 3=off)",
+            8: "Boost Hours (0 to 3)",
+            9: "Boost Start Time (Unix epoch)",
+            10: "Boiler State (1=off, 2=on)",
+        }
+        important_indices = (4, 5, 6, 7, 8, 9, 10, 14)
+    elif device_type == 4:
+        point_meanings = {
+            **generic_meanings,
+            6: "Setpoint (Any Mode) (temp × 10)",
+            7: "Mode (0=auto, 1=all day, 2=on, 3=off)",
+            8: "Boost Hours (0 to 3)",
+            9: "Boost Start Time (Unix epoch)",
+            10: "Boiler State (1=off, 2=on)",
+        }
+        important_indices = (4, 5, 6, 7, 8, 9, 10, 14)
+    elif device_type == 258:
+        point_meanings = {
+            **generic_meanings,
+            6: "Setpoint (Read Only) (temp × 10)",
+            7: "Hi Temp Limit (temp × 10)",
+            8: "Lo Temp Limit (temp × 10)",
+            11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
+            12: "Setpoint (Man Mode) (temp × 10)",
+            13: "Boost State (0=Inactive, 1=Active)",
+            15: "Boost End Time (Unix timestamp or 0)",
+            16: "Schedule Active Flag (1/0)",
+            17: "Setpoint (Auto Mode) (temp × 10)",
+            18: "Boiler State (1=off, 2=on)",
+        }
+        important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 17, 18)
+    elif device_type == 514:
+        point_meanings = {
+            **generic_meanings,
+            6: "Setpoint (Read Only) (temp × 10)",
+            7: "Hi Temp Limit (temp × 10)",
+            8: "Lo Temp Limit (temp × 10)",
+            11: "Mode (0=AUTO, 4=OFF, 9=ALL DAY, 10=ON/MANUAL)",
+            12: "Manual Mode Setpoint (temp × 10)",
+            13: "Boost State (0=Inactive, 1=Active)",
+            15: "Boost End Time (Unix timestamp or 0)",
+            16: "Schedule Active Flag (1/0)",
+            18: "Boiler State (1=off, 2=on)",
+        }
+        important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 18)
+    elif device_type == 773:
+        point_meanings = {
+            **generic_meanings,
+            11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
+            12: "Manual Mode Setpoint (temp × 10)",
+            13: "Boost State (0=Inactive, 1=Active, might be hours)",
+            15: "Boost End Time (Unix timestamp or 0)",
+        }
+        important_indices = (4, 5, 11, 12, 13, 14, 15)
+    else:
+        # Unknown device type - use generic only
+        point_meanings = generic_meanings.copy()
+        important_indices = (4, 5, 14)
     
     print(f"{'Index':<8} {'Value':<15} {'Hex':<12} {'Meaning':<35}")
     print("-" * 70)
@@ -299,10 +349,8 @@ def print_pointdata_table(zone):
         hex_val = hex(int(val)) if isinstance(val, (int, float)) else "N/A"
         meaning = point_meanings.get(idx, "")
         
-        # Highlight important indices
-        if idx == 15:
-            print(colored(f"{idx:<8} {val:<15} {hex_val:<12} {meaning:<35}", Colors.YELLOW))
-        elif idx in (5, 6, 7, 10):
+        # Highlight important indices based on device type
+        if idx in important_indices:
             print(colored(f"{idx:<8} {val:<15} {hex_val:<12} {meaning:<35}", Colors.GREEN))
         else:
             print(f"{idx:<8} {val:<15} {hex_val:<12} {meaning:<35}")
@@ -319,40 +367,110 @@ def print_schedule(zone):
         print(colored("  No schedule data available", Colors.DIM))
         return
     
+    device_type = zone.get("deviceType")
+    
+    # Determine schedule format based on device type
+    # deviceType 258 = EMBER-TS2: p1-p6 with "time" and "temperature"
+    # deviceType 2, 4, 514 = EMBER-PS/EMBER-PS2: p1-p3 with "startTime" and "endTime"
+    # Other device types: unknown format
+    
+    if device_type == 258:
+        # EMBER-TS2 format: 6 periods (p1-p6) with time and temperature
+        schedule_format = "EMBER-TS2"
+        num_periods = 6
+    elif device_type in (2, 4, 514):
+        # EMBER-PS/EMBER-PS2 format: 3 periods (p1-p3) with startTime/endTime
+        schedule_format = "EMBER-PS" if device_type in (2, 4) else "EMBER-PS2"
+        num_periods = 3
+    else:
+        # Unknown format - try to detect
+        schedule_format = "Unknown"
+        # Check first day to see what format it uses
+        if device_days:
+            first_day = device_days[0]
+            # Check if it has p1 with "time" field (EMBER-TS format)
+            p1 = first_day.get('p1', {})
+            if isinstance(p1, dict) and 'time' in p1 and 'startTime' not in p1:
+                schedule_format = "Detected: EMBER-TS-like (time-based)"
+                num_periods = 6  # Try 6 periods
+            # Check if it has p1 with "startTime" field (EMBER-PS format)
+            elif isinstance(p1, dict) and 'startTime' in p1:
+                schedule_format = "Detected: EMBER-PS-like (range-based)"
+                num_periods = 3  # Try 3 periods
+            else:
+                schedule_format = "Unknown format"
+                num_periods = 3  # Default fallback
+    
+    print(f"  Schedule Format: {colored(schedule_format, Colors.YELLOW)}")
+    
     for day in sorted(device_days, key=lambda x: x.get('dayType', 0)):
         day_type = day.get('dayType', 0)
         day_name = days_of_week[day_type] if 0 <= day_type < 7 else f"Day {day_type}"
         
         print(f"\n  {colored(day_name, Colors.BOLD)}:")
         
-        for p_num in range(1, 4):
-            p_key = f'p{p_num}'
-            period = day.get(p_key)
-            if period:
-                start = period.get('startTime')
-                end = period.get('endTime')
-                temp = period.get('temperature')
-                
-                start_str = decode_time(start)
-                end_str = decode_time(end)
-                
-                # Check for disabled period (start == end)
-                if start == end:
-                    print(colored(f"    P{p_num}: DISABLED (start == end)", Colors.DIM))
+        if schedule_format.startswith("EMBER-TS"):
+            # EMBER-TS2 format: p1-p6 with time and temperature
+            for p_num in range(1, num_periods + 1):
+                p_key = f'p{p_num}'
+                period = day.get(p_key)
+                if period and isinstance(period, dict):
+                    time_value = period.get('time')
+                    temp = period.get('temperature')
+                    
+                    if time_value is not None:
+                        time_str = decode_time(time_value)
+                        temp_str = f" @ {temp/10:.1f}°C" if temp is not None else ""
+                        print(f"    P{p_num}: {time_str}{temp_str}")
+                    else:
+                        print(colored(f"    P{p_num}: Not defined (no time)", Colors.DIM))
                 else:
-                    temp_str = f" @ {temp/10:.1f}°C" if temp else ""
-                    print(f"    P{p_num}: {start_str} - {end_str}{temp_str}")
-            else:
-                print(colored(f"    P{p_num}: Not defined", Colors.DIM))
+                    print(colored(f"    P{p_num}: Not defined", Colors.DIM))
+        
+        elif schedule_format.startswith("EMBER-PS"):
+            # EMBER-PS/EMBER-PS2 format: p1-p3 with startTime/endTime
+            for p_num in range(1, num_periods + 1):
+                p_key = f'p{p_num}'
+                period = day.get(p_key)
+                if period and isinstance(period, dict):
+                    start = period.get('startTime')
+                    end = period.get('endTime')
+                    temp = period.get('temperature')
+                    
+                    start_str = decode_time(start)
+                    end_str = decode_time(end)
+                    
+                    # Check for disabled period (start == end or None)
+                    if start is None or end is None:
+                        print(colored(f"    P{p_num}: Not defined (missing time)", Colors.DIM))
+                    elif start == end:
+                        print(colored(f"    P{p_num}: DISABLED (start == end)", Colors.DIM))
+                    else:
+                        temp_str = f" @ {temp/10:.1f}°C" if temp is not None else ""
+                        print(f"    P{p_num}: {start_str} - {end_str}{temp_str}")
+                else:
+                    print(colored(f"    P{p_num}: Not defined", Colors.DIM))
+        
+        else:
+            # Unknown format - display raw data
+            print(colored(f"    Unknown schedule format for device type {device_type}", Colors.RED))
+            for p_num in range(1, min(num_periods + 1, 7)):
+                p_key = f'p{p_num}'
+                period = day.get(p_key)
+                if period:
+                    print(f"    P{p_num}: {json.dumps(period)}")
+                else:
+                    print(colored(f"    P{p_num}: Not defined", Colors.DIM))
 
 
 def format_device_type(device_type):
     """Format device type with known descriptions."""
     device_models = {
-        2: "Thermostat",
-        4: "Hot Water Controller",
-        514: "Hot Water Controller (514)",
-        773: "Thermostatic Radiator Valve (TRV)",
+        2: "Thermostat (RX7-RF)",
+        4: "Hot Water (RX7-RF)",
+        258: "Thermostat (RF1A-OT)",
+        514: "Thermostat (RX7-RF-V2)",
+        773: "TRV (RF16?)",
     }
     description = device_models.get(device_type, "Unknown")
     return f"{device_type} ({description})"
@@ -479,6 +597,10 @@ def print_cli_help(transport_mode):
       Show the schedule for a zone
       Example: schedule Heating
 
+  {colored('pointindex <zone>', Colors.GREEN)}
+      Show the point index table for a zone
+      Example: pointindex Heating
+
   {colored('boost <zone> [duration]', Colors.GREEN)} {transport_str}
       Boost a zone for the specified duration (default: 1 hour)
       Duration can be 0 (cancel), 1, 2, or 3 hours
@@ -527,7 +649,7 @@ def on_mqtt_pointdata(mac, parsed_data):
     """Callback for MQTT pointData updates."""
     print(colored(f"\n  [MQTT] Received update for MAC {mac}:", Colors.YELLOW))
     for idx, data in sorted(parsed_data.items()):
-        print(f"    PointIndex {idx} ({data['name']}): {data['value']}")
+        print(f"    PointIndex {idx}: {data['value']}")
     print(colored("eph> ", Colors.GREEN), end='', flush=True)
 
 
@@ -619,6 +741,21 @@ def run_interactive_cli(ember, homes):
                 if zone:
                     print(f"\n  {colored(zone_name(zone), Colors.BOLD + Colors.CYAN)}")
                     print_schedule(zone)
+                else:
+                    print(colored(f"  Error: Zone '{args_str}' not found", Colors.RED))
+                    print(f"  Available zones: {', '.join(list_zone_names(current_homes))}")
+            
+            elif command == 'pointindex':
+                if not args_str:
+                    print(colored("  Error: Please specify a zone name", Colors.RED))
+                    print("  Usage: pointindex <zone>")
+                    continue
+                
+                current_homes = get_current_homes(ember, homes)
+                zone, zone_id = find_zone(current_homes, args_str)
+                if zone:
+                    print(f"\n  {colored(zone_name(zone), Colors.BOLD + Colors.CYAN)}")
+                    print_pointdata_table(zone)
                 else:
                     print(colored(f"  Error: Zone '{args_str}' not found", Colors.RED))
                     print(f"  Available zones: {', '.join(list_zone_names(current_homes))}")
