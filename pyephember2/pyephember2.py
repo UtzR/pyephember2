@@ -161,6 +161,12 @@ def GetPointIndex(zone, ephFunction) -> int:
                     return 8  # Lo Temp Limit
                 case _:
                     return -1  # Not supported
+        case EphFunction.AUTO_OVERRIDE:
+            match device_type:
+                case 258 | 514:
+                    return 16  # Schedule Active Flag
+                case _:
+                    return -1  # Not supported
         case _:
             return -1  # No point index found
 
@@ -181,6 +187,7 @@ class EphFunction(Enum):
     BOOST_TEMP = 9
     MAX_TEMP = 10
     MIN_TEMP = 11
+    AUTO_OVERRIDE = 12
     
 
 
@@ -632,6 +639,21 @@ def zone_mode(zone):
                 f"Unknown modeValue {modeValue} for zone (deviceType: {zone.get('deviceType', 'unknown')}). "
                 f"Expected modeValue: 0, 1, 2, 3, 4, 9, or 10"
             )
+
+
+def zone_auto_override(zone):
+    """
+    Check if AUTO_OVERRIDE is set for this zone.
+    
+    Returns True if AUTO_OVERRIDE is active (value = 1), False otherwise.
+    Only supported for device types 258 and 514.
+    For other device types, returns False.
+    """
+    override_value = zone_pointdata_value(zone, EphFunction.AUTO_OVERRIDE)
+    if override_value is None:
+        return False  # Not supported or not found
+    return override_value == 1
+
 
 def get_zone_mode_value(zone, mode) -> int:
     
