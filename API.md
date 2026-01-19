@@ -1478,19 +1478,20 @@ From observation there are 3 types of data used in the zone details point data.
 
 Known `deviceType`:
 
-| deviceType | Description | Product                           | 
-|------------|-------------|-----------------------------------|
-| 2          | Thermostat  | Thermostat on an RX7-RF           | 
-| 4          | Hot Water   | Hot Water Controller on an RX7-RF |
-| 258        | Thermostat  | Thermostat on an RF1A-OT          |
-| 514        | Thermostat  | Thermostat on an RX7-RF-V2        | 
-| 773        | TRV         | TRV on an RF16?                   |
+| deviceType | Description | Product                           | systemType  |
+|------------|-------------|-----------------------------------|-------------|
+| 2          | Thermostat  | Thermostat on an RX7-RF           | EMBER-PS    | 
+| 4          | Hot Water   | Hot Water Controller on an RX7-RF | EMBER-PS    |
+| 2          | Thermostat  | Thermostat on an RF1A-OT          | EMBER-TS1   |
+| 258        | Thermostat  | Thermostat on an RF1A-OT          | EMBER-TS2   |
+| 514        | Thermostat  | Thermostat on an RX7-RF-V2        | EMBER-PS2   |
+| 773        | TRV         | TRV on an RF16?                   | EMBER-RS    |
 
 ### Point Index
 
 The point index is an integer that refers to the element is being controlled. 
 Some point index values can be written to, others are read only.
-Some point index values are the same for all devices some are specific for the device.
+Some point index values are the same for all devices/systemTypes some are specific for the device.
 
 The generic point index options for zone data are:
 
@@ -1501,7 +1502,7 @@ The generic point index options for zone data are:
 | 14    | Setpoint (Boost)     | 4    | temp × 10              | CONFIRMED |   R/W  |
 
 
-#### deviceType = 2
+#### systemType = EMBER-PS 
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 6     | Setpoint (Any Mode)  | 4    | temp × 10                      | CONFIRMED |  R/W   |
@@ -1510,16 +1511,8 @@ The generic point index options for zone data are:
 | 9     | Boost Start Time     | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
 | 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
 
-#### deviceType = 4
-| Index | Element              | Type | Values / Notes                 | Status    | R/W    |
-|-------|----------------------|------|--------------------------------|-----------|--------|
-| 6     | Setpoint (Any Mode)  | 4    | temp × 10                      | CONFIRMED |  R/W   |
-| 7     | Mode                 | 1    | 0=auto, 1=all day, 2=on, 3=off | CONFIRMED |  R/W   |
-| 8     | Boost Hours (0 to 3) | 1    | 0=inactive, 1-3=hours          | CONFIRMED |  R/W   |
-| 9     | Boost Start Time     | 5    | Unix epoch (seconds)           | CONFIRMED |   R    |
-| 10    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
 
-#### deviceType = 258
+#### systemType = EMBER-TS2 (and likely EMBER-TS1) 
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 6     | Setpoint (Read Only) | 4    | temp × 10                      | CONFIRMED |  R     |
@@ -1533,7 +1526,7 @@ The generic point index options for zone data are:
 | 17    | Setpoint (Auto Mode) | 4    | temp × 10                      | CONFIRMED |  R/W   |
 | 18    | Boiler State         | 1    | 1=off, 2=on                    | CONFIRMED |   R    |
 
-#### deviceType = 514 
+#### systemType = EMBER-PS2 (likely similar to EMBER-TS2 and EMBER-TS1)
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 6     | Setpoint (Read Only) | 4    | temp × 10                      | VERIFY    |  R     |
@@ -1546,7 +1539,7 @@ The generic point index options for zone data are:
 | 16    | Auto Override        | 1    | 1/0, override setp. in Auto    | CONFIRMED |  R/W   |
 | 18    | Boiler State         | 1    | 1=off, 2=on                    | VERIFY    |   R    |
 
-#### deviceType = 773
+#### systemType = EMBER-RS (not much known about this, no debug data available)
 | Index | Element              | Type | Values / Notes                 | Status    | R/W    |
 |-------|----------------------|------|--------------------------------|-----------|--------|
 | 11    | Mode                 | 1    | 0 = AUTO, 1 = ON/MANUAL, 4 = OFF  | CONFIRMED |  R/W   |
