@@ -129,7 +129,8 @@ def GetPointIndex(zone, ephFunction) -> int:
     assert isinstance(ephFunction, EphFunction)
     
     # Extract device type once at the top (needed for multiple cases)
-    device_type = zone["deviceType"]
+    # device_type = zone.get("deviceType")
+    system_type = zone.get("systemType")
     
     match ephFunction:
         case EphFunction.ADVANCE_ACTIVE:
@@ -137,8 +138,8 @@ def GetPointIndex(zone, ephFunction) -> int:
         case EphFunction.CURRENT_TEMP:
             return 5
         case EphFunction.TARGET_TEMP:
-            match device_type:
-                case 258 | 514:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2":
                     # Directly read MODE value (point index 11) instead of calling zone_mode()
                     mode_value = _get_pointdata_value_by_index(zone, 11)
                     if mode_value == 0:  # AUTO mode
@@ -147,54 +148,64 @@ def GetPointIndex(zone, ephFunction) -> int:
                         return 17 if (override_value == 1) else 6  # Setpoint (Auto Mode)
                     else:
                         return 12  # Setpoint (Man Mode)
-                case 773:
+                case "EMBER-RS":
                     return 12  # Manual Mode Setpoint
-                case _:  # deviceType 2, 4
+                case "EMBER-PS":  
                     return 6
+                case _:
+                    return -1  # Unknown systemType
         case EphFunction.MODE:
-            match device_type:
-                case 258 | 514 | 773:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
                     return 11
-                case _:
+                case "EMBER-PS":
                     return 7
+                case _:
+                    return -1  # Unknown systemType
         case EphFunction.BOOST_HOURS:
-            match device_type:
-                case 258 | 514 | 773:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
                     return 13
-                case _:
+                case "EMBER-PS":
                     return 8
+                case _:
+                    return -1  # Unknown systemType
         case EphFunction.BOOST_TIME:
-            match device_type:
-                case 258 | 514 | 773:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
                     return 15
-                case _:
+                case "EMBER-PS":
                     return 9
-        case EphFunction.BOILER_STATE:
-            match device_type:
-                case 258 | 514:
-                    return 18
                 case _:
+                    return -1  # Unknown systemType
+        case EphFunction.BOILER_STATE:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
+                    return 18
+                case "EMBER-PS":
                     return 10
+                case _:
+                    return -1  # Unknown systemType
         case EphFunction.BOOST_TEMP:
             return 14
         case EphFunction.MAX_TEMP:
-            match device_type:
-                case 258 | 514:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2":
                     return 7  # Hi Temp Limit
                 case _:
-                    return -1  # Not supported
+                    return -1  # Not supported for this systemType
         case EphFunction.MIN_TEMP:
-            match device_type:
-                case 258 | 514:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2":
                     return 8  # Lo Temp Limit
                 case _:
-                    return -1  # Not supported
+                    return -1  # Not supported for this systemType
         case EphFunction.AUTO_OVERRIDE:
-            match device_type:
-                case 258 | 514:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2":
                     return 16  # override
                 case _:
-                    return -1  # Not supported
+                    return -1  # Not supported for this systemType
         case _:
             return -1  # No point index found
 
@@ -298,19 +309,13 @@ def zone_advance_active(zone):
     """
     Check if zone has advance active
     """
-    match zone["deviceType"]:
-        case 773:
-            # Mode not supported
-            return False
-        case 514:
-            # Need to fix, point index or value is not right
-            return False
-        case 258:
-            # Need to fix, point index or value is not right
-            return False
-        case _: # All other devices (2, 4)
+    system_type = zone.get("systemType")
+    match system_type:
+        case "EMBER-PS":
             return zone_pointdata_value(zone, EphFunction.ADVANCE_ACTIVE) != 0
-
+        case _: 
+            return False
+            
 
 def boiler_state(zone):
     """
@@ -455,20 +460,21 @@ def zone_is_scheduled_on(zone):
 HotWaterDevices = [4]
 
 def zone_is_hotwater(zone):
-    if zone["deviceType"] in HotWaterDevices:
-        return True
-    else:
-        return False
+    """
+    Check if zone is a hot water device.
+    Hot water devices (deviceType 4) have no temperature control.
+    """
+    return zone.get("deviceType") in HotWaterDevices
 
 def zone_supports_all_day(zone):
     """
     Check if zone supports ALL_DAY mode.
     
-    Returns True for device types 2, 4, and 514.
-    Returns False for device types 258 and 773.
+    Returns True for system types "EMBER-PS" and "EMBER-PS2".
+    Returns False for other system types (e.g., "EMBER-TS1", "EMBER-TS2", "EMBER-RS").
     """
-    device_type = zone.get("deviceType")
-    return device_type in (2, 4, 514)
+    system_type = zone.get("systemType")
+    return system_type in ("EMBER-PS", "EMBER-PS2")
 
 def zone_name(zone):
     """
@@ -502,7 +508,10 @@ def zone_target_temperature(zone):
     """
     Get target temperature for this zone
     """
-    if zone["deviceType"] == 773:
+    system_type = zone.get("systemType")
+    if system_type is None:
+        raise RuntimeError("zone missing 'systemType' field")
+    if system_type == "EMBER-RS":
         # in auto mode need to find program target temp.
         if zone_mode(zone) == ZoneMode.AUTO:
             programs = zone_get_running_program(zone)
@@ -581,104 +590,93 @@ def zone_pointdata_value(zone, ephFunction):
 def zone_mode(zone):
     """
     Get mode for this zone
-    Default settings based on next known devices
-    deviceTypes 2 | 4:
+    Mode values based on systemType:
+
+    EMBER-PS:
     AUTO = 0
     ALL_DAY = 1
     ON = 2
     OFF = 3
 
-    deviceTypes 773:
+    EMBER-PS2:
     AUTO = 0
-    ON/Manual = 1
-    BOOST = 0 ? Could be another point index
-    OFF = 4
-
-    deviceTypes 514:
-    AUTO = 0
-    ADVANCE = 0 ? Could be another point index
     ALL_DAY = 9
     ON/Manual = 10
-    BOOST = 0 ? Could be another point index
+    OFF = 4
+
+    EMBER-TS1 / EMBER-TS2 / EMBER-RS:
+    AUTO = 0
+    ON/Manual = 1
     OFF = 4
     """
 
     modeValue = zone_pointdata_value(zone, EphFunction.MODE)
+    system_type = zone.get("systemType")
+    if system_type is None:
+        raise RuntimeError("zone missing 'systemType' field")
+    
     match modeValue:
         case 0:
             return ZoneMode.AUTO
         case 1:
-            match zone["deviceType"]:
-                case 2:
+            match system_type:
+                case "EMBER-PS":
                     return ZoneMode.ALL_DAY
-                case 4:
-                    return ZoneMode.ALL_DAY
-                case 258:
-                    return ZoneMode.ON
-                case 773:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-RS":
                     return ZoneMode.ON
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 1. "
-                        f"Expected deviceType: 2, 4, 258, or 773"
+                        f"Unhandled systemType {system_type} for modeValue 1. "
+                        f"Expected: EMBER-PS, EMBER-TS1, EMBER-TS2, or EMBER-RS"
                     )
         case 2:
-            match zone["deviceType"]:
-                case 2:
-                    return ZoneMode.ON
-                case 4:
+            match system_type:
+                case "EMBER-PS":
                     return ZoneMode.ON
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 2. "
-                        f"Expected deviceType: 2 or 4"
+                        f"Unhandled systemType {system_type} for modeValue 2. "
+                        f"Expected: EMBER-PS"
                     )
         case 3:
-            match zone["deviceType"]:
-                case 2:
-                    return ZoneMode.OFF
-                case 4:
+            match system_type:
+                case "EMBER-PS":
                     return ZoneMode.OFF
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 3. "
-                        f"Expected deviceType: 2 or 4"
+                        f"Unhandled systemType {system_type} for modeValue 3. "
+                        f"Expected: EMBER-PS"
                     )
         case 4:
-            match zone["deviceType"]:
-                case 258:
-                    return ZoneMode.OFF
-                case 514:
-                    return ZoneMode.OFF
-                case 773:
+            match system_type:
+                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
                     return ZoneMode.OFF
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 4. "
-                        f"Expected deviceType: 258, 514, or 773"
+                        f"Unhandled systemType {system_type} for modeValue 4. "
+                        f"Expected: EMBER-TS1, EMBER-TS2, EMBER-PS2, or EMBER-RS"
                     )
         case 9:
-            match zone["deviceType"]:
-                case 514:
+            match system_type:
+                case "EMBER-PS2":
                     return ZoneMode.ALL_DAY
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 9. "
-                        f"Expected deviceType: 514"
+                        f"Unhandled systemType {system_type} for modeValue 9. "
+                        f"Expected: EMBER-PS2"
                     )
         case 10:
-            match zone["deviceType"]:
-                case 514:
+            match system_type:
+                case "EMBER-PS2":
                     return ZoneMode.ON
                 case _:
                     raise RuntimeError(
-                        f"Unhandled deviceType {zone['deviceType']} for modeValue 10. "
-                        f"Expected deviceType: 514"
+                        f"Unhandled systemType {system_type} for modeValue 10. "
+                        f"Expected: EMBER-PS2"
                     )
         case _:
             raise RuntimeError(
-                f"Unknown modeValue {modeValue} for zone (deviceType: {zone.get('deviceType', 'unknown')}). "
-                f"Expected modeValue: 0, 1, 2, 3, 4, 9, or 10"
+                f"Unknown modeValue {modeValue} for zone (systemType: {system_type}). "
             )
 
 
@@ -697,9 +695,25 @@ def zone_auto_override(zone):
 
 
 def get_zone_mode_value(zone, mode) -> int:
+    """
+    Convert ZoneMode enum to the numeric mode value expected by the zone.
+    Mode values based on systemType (inverse of zone_mode function):
     
-    match zone['deviceType']:
-        case 773 | 258:
+    EMBER-PS:
+    AUTO = 0, ALL_DAY = 1, ON = 2, OFF = 3
+    
+    EMBER-PS2:
+    AUTO = 0, ALL_DAY = 9, ON = 10, OFF = 4
+    
+    EMBER-TS1 / EMBER-TS2 / EMBER-RS:
+    AUTO = 0, ON = 1, OFF = 4
+    """
+    system_type = zone.get("systemType")
+    if system_type is None:
+        raise RuntimeError("zone missing 'systemType' field")
+    
+    match system_type:
+        case "EMBER-TS1" | "EMBER-TS2" | "EMBER-RS":
             match mode:
                 case ZoneMode.AUTO:
                     return 0
@@ -709,10 +723,10 @@ def get_zone_mode_value(zone, mode) -> int:
                     return 4
                 case _:
                     raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for deviceType {zone['deviceType']}. "
+                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
                         f"Expected modes: AUTO, ON, or OFF"
                     )
-        case 514:
+        case "EMBER-PS2":
             match mode:
                 case ZoneMode.AUTO:
                     return 0
@@ -724,10 +738,10 @@ def get_zone_mode_value(zone, mode) -> int:
                     return 4
                 case _:
                     raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for deviceType {zone['deviceType']}. "
+                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
                         f"Expected modes: AUTO, ALL_DAY, ON, or OFF"
                     )
-        case _:
+        case "EMBER-PS":
             match mode:
                 case ZoneMode.AUTO:
                     return 0
@@ -739,10 +753,14 @@ def get_zone_mode_value(zone, mode) -> int:
                     return 3
                 case _:
                     raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for deviceType {zone['deviceType']}. "
+                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
                         f"Expected modes: AUTO, ALL_DAY, ON, or OFF"
                     )
-
+        case _:
+            raise RuntimeError(
+                f"Unhandled systemType {system_type} for get_zone_mode_value. "
+                f"Expected: EMBER-PS, EMBER-PS2, EMBER-TS1, EMBER-TS2, or EMBER-RS"
+            )
 
 class EphMessenger:
     """
@@ -1232,7 +1250,10 @@ class EphEmber:
 
     def _set_zone_target_temperature(self, zone, target_temperature):
         cmds = []  # Initialize cmds list
-        if (zone.get("deviceType") == 258 or zone.get("deviceType") == 514) and zone_mode(zone) == ZoneMode.AUTO:
+        system_type = zone.get("systemType")
+        if system_type is None:
+            raise RuntimeError("zone missing 'systemType' field")
+        if system_type in ("EMBER-TS1", "EMBER-TS2", "EMBER-PS2") and zone_mode(zone) == ZoneMode.AUTO:
             cmds.append(ZoneCommand('AUTO_OVERRIDE', 1, None)) # set override to 1
             # the next line uses 17 explicit as override is not yet set when calling GetPointIndex
             # that is ugly and we need to find a way around that
@@ -1240,6 +1261,7 @@ class EphEmber:
         else:
             cmds.append(ZoneCommand('TARGET_TEMP', target_temperature, None))
         return self.messenger.send_zone_commands(zone, cmds)
+
 
     def _set_zone_boost_temperature(self, zone, target_temperature):
         return self.messenger.send_zone_commands(
@@ -1262,39 +1284,44 @@ class EphEmber:
         Internal method to set zone boost
 
         num_hours validation:
-        - For device 258, 514, 773: max 1 hour (clamped if > 1)
-        - For device 2, 4: max 3 hours (clamped if > 3)
+        - For EMBER-TS1, EMBER-TS2, EMBER-PS2, EMBER-RS: max 1 hour (clamped if > 1)
+        - For EMBER-PS: max 3 hours (clamped if > 3)
 
         If boost_temperature is not None, send that
 
         Timestamp calculation:
-        - For device 258, 514, 773: current timestamp + num_hours (if timestamp=0)
-        - For device 2, 4: current timestamp only (if timestamp=0)
+        - For EMBER-TS1, EMBER-TS2, EMBER-PS2, EMBER-RS: current timestamp + num_hours (if timestamp=0)
+        - For EMBER-PS: current timestamp only (if timestamp=0)
 
         If timestamp is None, do not send timestamp at all.
         (maybe results in permanent boost?)
         """
-        device_type = zone["deviceType"]
+        system_type = zone.get("systemType")
+        if system_type is None:
+            raise RuntimeError("zone missing 'systemType' field")
         
-        # Validate and clamp num_hours based on device type
-        if device_type in (258, 514, 773):
-            if num_hours > 1:
-                num_hours = 1
-        else:
-            if num_hours > 3:
-                num_hours = 3
+        # Validate and clamp num_hours based on system type
+        match system_type:
+            case "EMBER-PS":
+                if num_hours > 3:
+                    num_hours = 3
+            case _:
+                # Use default of 1 hour for other system types
+                if num_hours > 1:
+                    num_hours = 1
         
         cmds = [ZoneCommand('BOOST_HOURS', num_hours, None)]
         if boost_temperature is not None:
             cmds.append(ZoneCommand('BOOST_TEMP', boost_temperature, None))
         if timestamp is not None:
             if timestamp == 0:
-                if device_type in (258, 514, 773):
-                    # For device 258, 514, 773: current time + num_hours
-                    timestamp = int((datetime.datetime.now() + datetime.timedelta(hours=num_hours)).timestamp())
-                else:
-                    # For device 2, 4: current time only
-                    timestamp = int(datetime.datetime.now().timestamp())
+                match system_type:
+                    case "EMBER-PS":
+                        # For EMBER-PS: current time only
+                        timestamp = int(datetime.datetime.now().timestamp())
+                    case _:
+                        # use default: current time + num_hours
+                        timestamp = int((datetime.datetime.now() + datetime.timedelta(hours=num_hours)).timestamp())
             cmds.append(ZoneCommand('BOOST_TIME', timestamp, None))
         return self.messenger.send_zone_commands(zone, cmds)
 
