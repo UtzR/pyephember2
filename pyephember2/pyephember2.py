@@ -90,6 +90,41 @@ class ZoneMode(Enum):
     OFF = 3
 
 
+# Mapping of system types to their zone mode value mappings
+# This is the single source of truth for mode conversions
+EMBER_MODE_MAP: dict[str, dict[ZoneMode, int]] = {
+    # TS / RS systems
+    "EMBER-TS1": {
+        ZoneMode.AUTO: 0,
+        ZoneMode.ON: 1,
+        ZoneMode.OFF: 4,
+    },
+    "EMBER-TS2": {
+        ZoneMode.AUTO: 0,
+        ZoneMode.ON: 1,
+        ZoneMode.OFF: 4,
+    },
+    "EMBER-RS": {
+        ZoneMode.AUTO: 0,
+        ZoneMode.ON: 1,
+        ZoneMode.OFF: 4,
+    },
+    # EPS systems
+    "EMBER-PS": {
+        ZoneMode.AUTO: 0,
+        ZoneMode.ALL_DAY: 1,
+        ZoneMode.ON: 2,
+        ZoneMode.OFF: 3,
+    },
+    "EMBER-PS2": {
+        ZoneMode.AUTO: 0,
+        ZoneMode.ALL_DAY: 9,
+        ZoneMode.ON: 10,
+        ZoneMode.OFF: 4,
+    },
+}
+
+
 def _get_zone_lock(zone: dict) -> threading.RLock:
     """
     Get or create a reentrant lock for a zone's pointDataList.
@@ -470,11 +505,18 @@ def zone_supports_all_day(zone):
     """
     Check if zone supports ALL_DAY mode.
     
-    Returns True for system types "EMBER-PS" and "EMBER-PS2".
-    Returns False for other system types (e.g., "EMBER-TS1", "EMBER-TS2", "EMBER-RS").
+    Returns True if the zone's systemType has ALL_DAY mode in EMBER_MODE_MAP.
+    Returns False otherwise (including if systemType is missing or unknown).
     """
     system_type = zone.get("systemType")
-    return system_type in ("EMBER-PS", "EMBER-PS2")
+    if system_type is None:
+        return False
+    
+    system_map = EMBER_MODE_MAP.get(system_type)
+    if system_map is None:
+        return False
+    
+    return ZoneMode.ALL_DAY in system_map
 
 def zone_name(zone):
     """
@@ -589,95 +631,34 @@ def zone_pointdata_value(zone, ephFunction):
 
 def zone_mode(zone):
     """
-    Get mode for this zone
-    Mode values based on systemType:
-
-    EMBER-PS:
-    AUTO = 0
-    ALL_DAY = 1
-    ON = 2
-    OFF = 3
-
-    EMBER-PS2:
-    AUTO = 0
-    ALL_DAY = 9
-    ON/Manual = 10
-    OFF = 4
-
-    EMBER-TS1 / EMBER-TS2 / EMBER-RS:
-    AUTO = 0
-    ON/Manual = 1
-    OFF = 4
+    Get mode for this zone.
+    
+    Uses EMBER_MODE_MAP to convert the numeric mode value from the device
+    to a ZoneMode enum value based on the zone's systemType.
     """
-
-    modeValue = zone_pointdata_value(zone, EphFunction.MODE)
+    mode_value = zone_pointdata_value(zone, EphFunction.MODE)
     system_type = zone.get("systemType")
     if system_type is None:
         raise RuntimeError("zone missing 'systemType' field")
     
-    match modeValue:
-        case 0:
-            return ZoneMode.AUTO
-        case 1:
-            match system_type:
-                case "EMBER-PS":
-                    return ZoneMode.ALL_DAY
-                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-RS":
-                    return ZoneMode.ON
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 1. "
-                        f"Expected: EMBER-PS, EMBER-TS1, EMBER-TS2, or EMBER-RS"
-                    )
-        case 2:
-            match system_type:
-                case "EMBER-PS":
-                    return ZoneMode.ON
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 2. "
-                        f"Expected: EMBER-PS"
-                    )
-        case 3:
-            match system_type:
-                case "EMBER-PS":
-                    return ZoneMode.OFF
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 3. "
-                        f"Expected: EMBER-PS"
-                    )
-        case 4:
-            match system_type:
-                case "EMBER-TS1" | "EMBER-TS2" | "EMBER-PS2" | "EMBER-RS":
-                    return ZoneMode.OFF
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 4. "
-                        f"Expected: EMBER-TS1, EMBER-TS2, EMBER-PS2, or EMBER-RS"
-                    )
-        case 9:
-            match system_type:
-                case "EMBER-PS2":
-                    return ZoneMode.ALL_DAY
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 9. "
-                        f"Expected: EMBER-PS2"
-                    )
-        case 10:
-            match system_type:
-                case "EMBER-PS2":
-                    return ZoneMode.ON
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled systemType {system_type} for modeValue 10. "
-                        f"Expected: EMBER-PS2"
-                    )
-        case _:
-            raise RuntimeError(
-                f"Unknown modeValue {modeValue} for zone (systemType: {system_type}). "
-            )
+    system_map = EMBER_MODE_MAP.get(system_type)
+    if system_map is None:
+        raise RuntimeError(
+            f"Unhandled systemType {system_type} for zone_mode. "
+            f"Expected: {', '.join(sorted(EMBER_MODE_MAP.keys()))}"
+        )
+    
+    # Reverse lookup: find ZoneMode for the given mode_value
+    for z_mode, ember_value in system_map.items():
+        if ember_value == mode_value:
+            return z_mode
+    
+    # mode_value not found in mapping
+    expected_values = ", ".join(str(v) for v in sorted(set(system_map.values())))
+    raise RuntimeError(
+        f"Unknown modeValue {mode_value} for systemType {system_type}. "
+        f"Expected values: {expected_values}"
+    )
 
 
 def zone_auto_override(zone):
@@ -697,70 +678,30 @@ def zone_auto_override(zone):
 def get_zone_mode_value(zone, mode) -> int:
     """
     Convert ZoneMode enum to the numeric mode value expected by the zone.
-    Mode values based on systemType (inverse of zone_mode function):
     
-    EMBER-PS:
-    AUTO = 0, ALL_DAY = 1, ON = 2, OFF = 3
-    
-    EMBER-PS2:
-    AUTO = 0, ALL_DAY = 9, ON = 10, OFF = 4
-    
-    EMBER-TS1 / EMBER-TS2 / EMBER-RS:
-    AUTO = 0, ON = 1, OFF = 4
+    Uses EMBER_MODE_MAP to convert a ZoneMode enum value to the numeric
+    value expected by the device based on the zone's systemType.
     """
     system_type = zone.get("systemType")
     if system_type is None:
         raise RuntimeError("zone missing 'systemType' field")
     
-    match system_type:
-        case "EMBER-TS1" | "EMBER-TS2" | "EMBER-RS":
-            match mode:
-                case ZoneMode.AUTO:
-                    return 0
-                case ZoneMode.ON:
-                    return 1
-                case ZoneMode.OFF:
-                    return 4
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
-                        f"Expected modes: AUTO, ON, or OFF"
-                    )
-        case "EMBER-PS2":
-            match mode:
-                case ZoneMode.AUTO:
-                    return 0
-                case ZoneMode.ALL_DAY:
-                    return 9
-                case ZoneMode.ON:
-                    return 10
-                case ZoneMode.OFF:
-                    return 4
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
-                        f"Expected modes: AUTO, ALL_DAY, ON, or OFF"
-                    )
-        case "EMBER-PS":
-            match mode:
-                case ZoneMode.AUTO:
-                    return 0
-                case ZoneMode.ALL_DAY:
-                    return 1
-                case ZoneMode.ON:
-                    return 2
-                case ZoneMode.OFF:
-                    return 3
-                case _:
-                    raise RuntimeError(
-                        f"Unhandled ZoneMode {mode} for systemType {system_type}. "
-                        f"Expected modes: AUTO, ALL_DAY, ON, or OFF"
-                    )
-        case _:
-            raise RuntimeError(
-                f"Unhandled systemType {system_type} for get_zone_mode_value. "
-                f"Expected: EMBER-PS, EMBER-PS2, EMBER-TS1, EMBER-TS2, or EMBER-RS"
-            )
+    system_map = EMBER_MODE_MAP.get(system_type)
+    if system_map is None:
+        raise RuntimeError(
+            f"Unhandled systemType {system_type} for get_zone_mode_value. "
+            f"Expected: {', '.join(sorted(EMBER_MODE_MAP.keys()))}"
+        )
+    
+    value = system_map.get(mode)
+    if value is None:
+        expected_modes = ", ".join(m.name for m in sorted(system_map.keys(), key=lambda m: m.value))
+        raise RuntimeError(
+            f"Unhandled ZoneMode {mode} for systemType {system_type}. "
+            f"Expected modes: {expected_modes}"
+        )
+    
+    return value
 
 class EphMessenger:
     """
