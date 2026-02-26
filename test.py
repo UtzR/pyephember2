@@ -277,68 +277,60 @@ def print_pointdata_table(zone):
     }
     
     # Device-type-specific point indices
-    if device_type == 2:
-        point_meanings = {
-            **generic_meanings,
-            6: "Setpoint (Any Mode) (temp × 10)",
-            7: "Mode (0=auto, 1=all day, 2=on, 3=off)",
-            8: "Boost Hours (0 to 3)",
-            9: "Boost Start Time (Unix epoch)",
-            10: "Boiler State (1=off, 2=on)",
-        }
-        important_indices = (4, 5, 6, 7, 8, 9, 10, 14)
-    elif device_type == 4:
-        point_meanings = {
-            **generic_meanings,
-            6: "Setpoint (Any Mode) (temp × 10)",
-            7: "Mode (0=auto, 1=all day, 2=on, 3=off)",
-            8: "Boost Hours (0 to 3)",
-            9: "Boost Start Time (Unix epoch)",
-            10: "Boiler State (1=off, 2=on)",
-        }
-        important_indices = (4, 5, 6, 7, 8, 9, 10, 14)
-    elif device_type == 258:
-        point_meanings = {
-            **generic_meanings,
-            6: "Setpoint (Read Only) (temp × 10)",
-            7: "Hi Temp Limit (temp × 10)",
-            8: "Lo Temp Limit (temp × 10)",
-            11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
-            12: "Setpoint (Man Mode) (temp × 10)",
-            13: "Boost State (0=Inactive, 1=Active)",
-            15: "Boost End Time (Unix timestamp or 0)",
-            16: "Schedule Active Flag (1/0)",
-            17: "Setpoint (Auto Mode) (temp × 10)",
-            18: "Boiler State (1=off, 2=on)",
-        }
-        important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 17, 18)
-    elif device_type == 514:
-        point_meanings = {
-            **generic_meanings,
-            6: "Setpoint (Read Only) (temp × 10)",
-            7: "Hi Temp Limit (temp × 10)",
-            8: "Lo Temp Limit (temp × 10)",
-            11: "Mode (0=AUTO, 4=OFF, 9=ALL DAY, 10=ON/MANUAL)",
-            12: "Manual Mode Setpoint (temp × 10)",
-            13: "Boost State (0=Inactive, 1=Active)",
-            15: "Boost End Time (Unix timestamp or 0)",
-            16: "Schedule Active Flag (1/0)",
-            18: "Boiler State (1=off, 2=on)",
-        }
-        important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 18)
-    elif device_type == 773:
-        point_meanings = {
-            **generic_meanings,
-            11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
-            12: "Manual Mode Setpoint (temp × 10)",
-            13: "Boost State (0=Inactive, 1=Active, might be hours)",
-            15: "Boost End Time (Unix timestamp or 0)",
-        }
-        important_indices = (4, 5, 11, 12, 13, 14, 15)
-    else:
-        # Unknown device type - use generic only
-        point_meanings = generic_meanings.copy()
-        important_indices = (4, 5, 14)
+    match device_type:
+        case 2 | 4:
+            point_meanings = {
+                **generic_meanings,
+                6: "Setpoint (Any Mode) (temp × 10)",
+                7: "Mode (0=auto, 1=all day, 2=on, 3=off)",
+                8: "Boost Hours (0 to 3)",
+                9: "Boost Start Time (Unix epoch)",
+                10: "Boiler State (1=off, 2=on)",
+            }
+            important_indices = (4, 5, 6, 7, 8, 9, 10, 14)
+        case 258:
+            point_meanings = {
+                **generic_meanings,
+                6: "Setpoint (Read Only) (temp × 10)",
+                7: "Hi Temp Limit (temp × 10)",
+                8: "Lo Temp Limit (temp × 10)",
+                11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
+                12: "Setpoint (Man Mode) (temp × 10)",
+                13: "Boost State (0=Inactive, 1=Active)",
+                15: "Boost End Time (Unix timestamp or 0)",
+                16: "Schedule Active Flag (1/0)",
+                17: "Setpoint (Auto Mode) (temp × 10)",
+                18: "Boiler State (1=off, 2=on)",
+            }
+            important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 17, 18)
+        case 514 | 516:
+            # EMBER-PS2 thermostat (514) and hot water (516) share the same point layout
+            point_meanings = {
+                **generic_meanings,
+                6: "Setpoint (Read Only) (temp × 10)",
+                7: "Hi Temp Limit (temp × 10)",
+                8: "Lo Temp Limit (temp × 10)",
+                11: "Mode (0=AUTO, 4=OFF, 9=ALL DAY, 10=ON/MANUAL)",
+                12: "Manual Mode Setpoint (temp × 10)",
+                13: "Boost State (0=Inactive, 1=Active)",
+                15: "Boost End Time (Unix timestamp or 0)",
+                16: "Schedule Active Flag (1/0)",
+                18: "Boiler State (1=off, 2=on)",
+            }
+            important_indices = (4, 5, 6, 7, 8, 11, 12, 13, 15, 16, 18)
+        case 773:
+            point_meanings = {
+                **generic_meanings,
+                11: "Mode (0=AUTO, 1=ON/MANUAL, 4=OFF)",
+                12: "Manual Mode Setpoint (temp × 10)",
+                13: "Boost State (0=Inactive, 1=Active, might be hours)",
+                15: "Boost End Time (Unix timestamp or 0)",
+            }
+            important_indices = (4, 5, 11, 12, 13, 14, 15)
+        case _:
+            # Unknown device type - use generic only
+            point_meanings = generic_meanings.copy()
+            important_indices = (4, 5, 14)
     
     print(f"{'Index':<8} {'Value':<15} {'Hex':<12} {'Meaning':<35}")
     print("-" * 70)
@@ -371,14 +363,14 @@ def print_schedule(zone):
     
     # Determine schedule format based on device type
     # deviceType 258 = EMBER-TS2: p1-p6 with "time" and "temperature"
-    # deviceType 2, 4, 514 = EMBER-PS/EMBER-PS2: p1-p3 with "startTime" and "endTime"
+    # deviceType 2, 4, 514, 516 = EMBER-PS/EMBER-PS2: p1-p3 with "startTime" and "endTime"
     # Other device types: unknown format
     
     if device_type == 258:
         # EMBER-TS2 format: 6 periods (p1-p6) with time and temperature
         schedule_format = "EMBER-TS2"
         num_periods = 6
-    elif device_type in (2, 4, 514):
+    elif device_type in (2, 4, 514, 516):
         # EMBER-PS/EMBER-PS2 format: 3 periods (p1-p3) with startTime/endTime
         schedule_format = "EMBER-PS" if device_type in (2, 4) else "EMBER-PS2"
         num_periods = 3
@@ -470,6 +462,7 @@ def format_device_type(device_type):
         4: "Hot Water (RX7-RF)",
         258: "Thermostat (RF1A-OT)",
         514: "Thermostat (RX7-RF-V2)",
+        516: "Hot Water (RX7-RF-V2)",
         773: "TRV (RF16?)",
     }
     description = device_models.get(device_type, "Unknown")
